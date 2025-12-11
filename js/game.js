@@ -14,7 +14,7 @@ let currentScore = 0;
 let timerInterval = null;
 let timeLeft = GAME_CONFIG.CHALLENGE_TIME;
 let timeElapsed = 0;
-let currentGridSize = 5;
+let currentGridSize = 4;
 let currentLevel = 'all';
 
 let totalWordCount = 0;
@@ -112,8 +112,19 @@ function solveBoard(grid, size) {
     return found;
 }
 
+// 1. 모바일 디바이스 체크 함수 (OS 기준)
+function isMobileDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    // Android, iOS(iPhone, iPad, iPod) 등을 체크
+    return /android|ipad|iphone|ipod/i.test(userAgent);
+}
+
+// 2. startWithCountdown 함수에 적용
 window.startWithCountdown = function() {
-    enterFullScreen();
+    // [수정] 화면 크기가 아니라 OS를 체크하여 모바일인 경우에만 전체화면 시도
+    if (isMobileDevice()) {
+        enterFullScreen();
+    }
     
     introScreen.classList.add('hidden');
     resultModal.classList.remove('active');
@@ -216,9 +227,12 @@ function updateStatsUI() {
         if(statWordGroup) statWordGroup.style.display = 'flex';
         if(btnHint) btnHint.classList.remove('hidden');
         if(targetScoreElement) targetScoreElement.style.visibility = 'hidden';
-    } else {
+    } else { // Challenge Mode
         if(statScoreGroup) statScoreGroup.style.display = 'flex';
-        if(statWordGroup) statWordGroup.style.display = 'none';
+        
+        // [수정] 챌린지 모드에서도 단어 수(찾은것/전체)를 숨기지 않고 보여줌
+        if(statWordGroup) statWordGroup.style.display = 'flex'; 
+        
         if(btnHint) btnHint.classList.add('hidden');
         if(targetScoreElement) targetScoreElement.style.visibility = 'visible';
     }
@@ -334,10 +348,13 @@ function showIdleHint() {
 
     const tile = document.querySelector(`.tile[data-index="${startIdx}"]`);
     if (tile) {
-        tile.classList.remove('idle-hint');
-        void tile.offsetWidth;
-        tile.classList.add('idle-hint');
-        setTimeout(() => { tile.classList.remove('idle-hint'); }, 2000);
+        // [수정] 기존 'idle-hint' 대신 'hint-highlight' 사용
+        tile.classList.remove('hint-highlight');
+        void tile.offsetWidth; // 애니메이션 리셋용
+        tile.classList.add('hint-highlight');
+        
+        // 지속 시간은 1.5초 (히든 힌트와 비슷하게 맞춤)
+        setTimeout(() => { tile.classList.remove('hint-highlight'); }, 1500);
     }
     lastActionTime = Date.now(); 
 }
