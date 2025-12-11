@@ -1,7 +1,7 @@
 import { WordBoard } from './board.js';
 import { assembleHangul } from './rules.js';
 import { GAME_CONFIG } from './config.js';
-// [삭제됨] import { GAME_DICTIONARY } ... -> 사전은 HTML에서 로드되므로 import 하지 않음
+// import { GAME_DICTIONARY } ... -> HTML에서 로드됨 (Object 형태)
 
 let gridData = [];
 let selectedIndices = [];
@@ -17,7 +17,6 @@ let timeElapsed = 0;
 let currentGridSize = 5;
 let currentLevel = 'all';
 
-// [신규] 전체 단어 수 저장용 변수
 let totalWordCount = 0;
 
 let currentHiddenWord = "";
@@ -27,14 +26,13 @@ let hiddenWordPath = [];
 let currentHintStep = 0;
 let lastActionTime = Date.now();
 
-const COMBINED_DICTIONARY = new Set();
+const COMBINED_DICTIONARY = new Set(); // 게임 로직용 (단어 존재 여부 확인)
 const LEVEL_DICTIONARY = new Set();
 
 const gridElement = document.getElementById('grid');
 const wordDisplay = document.getElementById('currentWord');
 const wordListElement = document.getElementById('wordList');
 
-// [신규] UI 요소 가져오기
 const statScoreGroup = document.getElementById('statScoreGroup');
 const statWordGroup = document.getElementById('statWordGroup');
 const foundCountEl = document.getElementById('foundCount');
@@ -63,13 +61,11 @@ if (targetScoreElement) {
 
 document.getElementById('hintBar').addEventListener('click', showHint);
 
-// [신규] 수동 힌트 버튼 함수 (전역 window에 등록해야 HTML에서 onclick으로 실행됨)
 window.useHint = function() {
     triggerHaptic('tap');
     showIdleHint();
 }
 
-// [기존 유지] 풀스크린 진입
 function enterFullScreen() {
     const doc = window.document;
     const docEl = doc.documentElement;
@@ -82,7 +78,6 @@ function enterFullScreen() {
     }
 }
 
-// [기존 유지] Solver 로직
 function solveBoard(grid, size) {
     const found = new Map();
     const directions = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
@@ -117,7 +112,6 @@ function solveBoard(grid, size) {
     return found;
 }
 
-// [기존 유지] 게임 시작 (카운트다운 포함)
 window.startWithCountdown = function() {
     enterFullScreen();
     
@@ -137,7 +131,7 @@ window.startWithCountdown = function() {
         } else {
             clearInterval(countInterval);
             countdownOverlay.classList.remove('active');
-            initGame(); // 카운트다운 끝난 후 게임 초기화
+            initGame();
         }
     }, 900);
 };
@@ -192,9 +186,12 @@ function initLevelDictionary() {
             }
         });
     }
-    // [수정] 전역 변수 GAME_DICTIONARY 사용 (import 안 함)
+    
+    // [수정] GAME_DICTIONARY는 이제 Object입니다. 키(단어)만 뽑아서 Set에 넣습니다.
     if (typeof GAME_DICTIONARY !== 'undefined') {
-        GAME_DICTIONARY.forEach(word => COMBINED_DICTIONARY.add(word));
+        Object.keys(GAME_DICTIONARY).forEach(word => {
+            COMBINED_DICTIONARY.add(word);
+        });
     }
 }
 initLevelDictionary();
@@ -213,16 +210,13 @@ window.setMode = function(mode) {
     startWithCountdown();
 }
 
-// [신규] UI 업데이트 (연습모드 vs 챌린지모드)
 function updateStatsUI() {
     if (currentMode === 'practice') {
-        // 연습모드: 점수 숨김, 단어 수 표시, 힌트 버튼 표시
         if(statScoreGroup) statScoreGroup.style.display = 'none';
         if(statWordGroup) statWordGroup.style.display = 'flex';
         if(btnHint) btnHint.classList.remove('hidden');
         if(targetScoreElement) targetScoreElement.style.visibility = 'hidden';
     } else {
-        // 챌린지모드: 점수 표시, 단어 수 숨김, 힌트 버튼 숨김
         if(statScoreGroup) statScoreGroup.style.display = 'flex';
         if(statWordGroup) statWordGroup.style.display = 'none';
         if(btnHint) btnHint.classList.add('hidden');
@@ -291,7 +285,11 @@ let toastTimer = null;
 function showToast(word, desc) {
     const toast = document.getElementById('toast');
     const tDesc = document.getElementById('toastDesc');
+    const tWord = document.getElementById('toastWord'); // 필요하면 사용
+
+    // [수정] 영문 뜻이 있으면 그것을 표시
     tDesc.textContent = desc;
+
     if (toastTimer) clearTimeout(toastTimer);
     toast.classList.remove('hidden');
     requestAnimationFrame(() => { toast.classList.add('show'); });
@@ -356,7 +354,6 @@ function initGame() {
     foundWords.clear();
     lastActionTime = Date.now();
     
-    // UI 업데이트 (점수 vs 단어수)
     updateStatsUI();
 
     document.querySelectorAll('.tile').forEach(t => t.classList.remove('idle-hint'));
@@ -412,7 +409,6 @@ function initGame() {
     gridData = gameData.grid;
     hiddenWordPath = gameData.path; 
     
-    // 전체 단어 계산 및 UI 업데이트
     possibleWords = solveBoard(gridData, currentGridSize);
     totalWordCount = possibleWords.size;
     if(foundCountEl) foundCountEl.textContent = "0";
@@ -570,27 +566,25 @@ function checkWord(word, rect) {
         return;
     }
 
+    // [수정] 사전 체크 (Set.has -> Object Property Check로 변경해도 되지만, COMBINED_DICTIONARY는 Set이므로 그대로 사용)
+    const inGameDic = COMBINED_DICTIONARY.has(word);
+    
+    // Level words(히든 등)는 별도 체크
     let levelEntry = null;
     if (typeof LEVEL_WORDS !== 'undefined') {
         for (const level in LEVEL_WORDS) {
             const found = LEVEL_WORDS[level].find(item => item.word === word);
-            if (found) {
-                levelEntry = found;
-                break;
-            }
+            if (found) { levelEntry = found; break; }
         }
     }
 
-    const inGameDic = GAME_DICTIONARY.has(word);
-    const inLevelDic = LEVEL_DICTIONARY.has(word);
-
-    if (inGameDic || inLevelDic) {
+    if (inGameDic) {
         foundWords.add(word);
         if (possibleWords.has(word)) {
             possibleWords.delete(word);
         }
 
-        // [신규] 단어 수 UI 업데이트
+        // 단어 수 UI 업데이트
         if(foundCountEl) foundCountEl.textContent = foundWords.size;
 
         const tileCount = selectedIndices.length;
@@ -627,7 +621,6 @@ function checkWord(word, rect) {
             }
         }
 
-        // 올 클리어 체크
         if (possibleWords.size === 0) {
             stopTimer();
             const icon = document.getElementById('resIcon');
@@ -645,11 +638,17 @@ function checkWord(word, rect) {
             resultModal.classList.add('active');
         }
 
-        let descText = "사전에 등록된 단어입니다.";
-        if (levelEntry && levelEntry.desc) {
-            descText = levelEntry.desc; 
+        // [수정] 영어 뜻 가져오기 (없으면 기본 메시지)
+        let engMeaning = "";
+        if (typeof GAME_DICTIONARY !== 'undefined') {
+            engMeaning = GAME_DICTIONARY[word] || "";
         }
-        showToast(word, descText);
+        
+        // 토스트에는 짧게 표시 (너무 길면 잘라내기 등은 필요시 추가)
+        let toastMsg = engMeaning;
+        if (!toastMsg) toastMsg = "사전에 등록된 단어입니다.";
+        
+        showToast(word, toastMsg);
 
         addWordTag(word, pts, isHiddenFound); 
         wordDisplay.classList.add('anim-success'); 
@@ -670,18 +669,27 @@ function addWordTag(word, pts, isHidden = false) {
     wordListElement.insertBefore(tag, wordListElement.firstChild);
 }
 
+// [수정] 바텀 시트에 영어 뜻 표시
 window.openSheet = function(word) {
     triggerHaptic('tap');
     const overlay = document.getElementById('sheetOverlay'); 
     const title = document.getElementById('sheetWord'); 
-    
-    const elEng = document.getElementById('sheetEng');
+    const elEng = document.getElementById('sheetEng'); // 기존 영어 단어용 (안 쓰면 숨기거나 재활용)
     const elEngDesc = document.getElementById('sheetEngDesc');
-    const elDesc = document.getElementById('sheetDesc');
+    const elDesc = document.getElementById('sheetDesc'); // 여기에 영어 뜻 표시
     
     title.textContent = word; 
     
-    elDesc.textContent = "네이버 사전에서 뜻을 확인하세요.";
+    // 사전에서 뜻 가져오기
+    let definition = "";
+    if (typeof GAME_DICTIONARY !== 'undefined') {
+        definition = GAME_DICTIONARY[word] || "영어 뜻 데이터가 없습니다.";
+    }
+
+    // 화면에 표시
+    elDesc.textContent = definition;
+    
+    // 기존 요소 초기화
     elEng.textContent = "";
     elEngDesc.textContent = "";
 
@@ -689,6 +697,7 @@ window.openSheet = function(word) {
     btnNaver.href = `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}`; 
     overlay.classList.add('active');
 }
+
 window.closeSheet = function() {
     triggerHaptic('tap');
     document.getElementById('sheetOverlay').classList.remove('active'); 
@@ -702,15 +711,6 @@ function startTimer() {
         if (now - lastActionTime > 3000 && !hintTooltip.classList.contains('show') && !hintBar.classList.contains('hidden') && !hintBar.classList.contains('success')) {
             hintTooltip.classList.add('show');
         }
-
-        // [수동 힌트로 변경되어 자동 힌트 제거]
-        /*
-        if (currentMode === 'practice' && GAME_CONFIG.ENABLE_AUTO_HINT) {
-            if (now - lastActionTime > GAME_CONFIG.AUTO_HINT_DELAY) {
-                showIdleHint();
-            }
-        }
-        */
 
         if (currentMode === 'challenge') {
             timeLeft--;
