@@ -646,7 +646,7 @@ function checkWord(word, rect) {
         
         // 토스트에는 짧게 표시 (너무 길면 잘라내기 등은 필요시 추가)
         let toastMsg = engMeaning;
-        if (!toastMsg) toastMsg = "사전에 등록된 단어입니다.";
+        if (!toastMsg) toastMsg = "영어 뜻 데이터가 없습니다.";
         
         showToast(word, toastMsg);
 
