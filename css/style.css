@@ -302,3 +302,34 @@ body {
     70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
+
+/* [신규] 수동 힌트 버튼 스타일 */
+.hint-btn {
+    background: rgba(255, 255, 255, 0.1); 
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fbbf24; /* 노란색 텍스트 */
+    font-size: 14px; 
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; 
+    align-items: center; 
+    gap: 6px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.hint-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hint-btn.hidden {
+    display: none;
+}
+
+/* 통계 라벨 너비 확보 */
+.stat-label {
+    white-space: nowrap;
+}

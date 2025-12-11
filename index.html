@@ -67,6 +67,15 @@
                 <span class="score-target" id="targetScoreDisplay">/ 100</span>
             </div>
         </div>
+
+        <div class="stat-group" id="statWordGroup" style="display:none;">
+            <span class="stat-label">단어 (찾은것/전체)</span>
+            <div>
+                <span class="score-val" id="foundCount">0</span>
+                <span class="score-target" id="totalCount">/ 0</span>
+            </div>
+        </div>
+
         <div class="stat-group" style="align-items:flex-end;">
             <span class="stat-label">TIME</span>
             <div class="timer-val" id="timer">00:00</div>
@@ -85,6 +94,11 @@
                 <span id="hintText">힌트</span>
                 <span id="hintScore" class="mission-score">+50</span>
             </div>
+
+            <button id="btnHint" class="hint-btn hidden" onclick="useHint()">
+                💡 힌트 보기
+            </button>
+            
         </div>
 
         <div class="current-word" id="currentWord">시작</div>
