@@ -118,9 +118,6 @@ function enterFullScreen() {
 
 // Case A: 인트로에서 처음 시작할 때 (광고 X, 카운트다운 X)
 window.startFromIntro = function() {
-    // 1. 세로 모드 고정 시도
-    lockPortrait();
-    if (isMobileDevice()) enterFullScreen();
 
     // 2. 인트로 숨기기
     introScreen.classList.add('hidden');
@@ -154,7 +151,6 @@ function runCountdownSequence() {
 
 // Case C: [새 게임] 버튼 눌렀을 때 (광고 O -> 카운트다운 O)
 window.startWithCountdown = function() {
-    lockPortrait(); // 혹시 풀렸을 때를 대비해 재시도
 
     // 광고 로직: 광고 매니저가 있고 + 광고 제거를 안 했다면?
     if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
@@ -162,6 +158,44 @@ window.startWithCountdown = function() {
         AdManager.showInterstitial(runCountdownSequence);
     } else {
         console.log("광고 없이 카운트다운 시작");
+        runCountdownSequence();
+    }
+};
+
+// 주소창 숨기기용 함수
+function hideBrowserUI() {
+    // 1. 화면 높이를 아주 조금 늘려서 스크롤이 생기게 만듦
+    document.body.style.minHeight = "100vh";
+    document.body.style.height = "calc(100vh + 1px)"; 
+    
+    // 2. 0.1초 뒤에 강제로 스크롤을 1px 내려서 상단 바가 접히게 유도
+    setTimeout(function() {
+        window.scrollTo(0, 1);
+        
+        // 3. 스크롤 후 다시 높이를 원상복구 (선택사항, 게임에 따라 유지해도 됨)
+        // document.body.style.height = "100vh"; 
+    }, 100);
+}
+
+// 기존 함수에 적용
+window.startFromIntro = function() {
+    // enterFullScreen();  <-- 이건 지우셨죠? (OK)
+    
+    hideBrowserUI(); // [추가] 주소창 숨기기 시도
+    
+    introScreen.classList.add('hidden');
+    triggerHaptic('tap');
+    initGame();
+};
+
+window.startWithCountdown = function() {
+    // enterFullScreen(); <-- 이것도 지우셨죠? (OK)
+    
+    hideBrowserUI(); // [추가] 주소창 숨기기 시도
+
+    if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
+        AdManager.showInterstitial(runCountdownSequence);
+    } else {
         runCountdownSequence();
     }
 };
@@ -514,17 +548,43 @@ function initGame() {
     startTimer();
 }
 
-function getTileFromEvent(e) {
+// [수정] game.js의 getTileFromEvent 함수
+function getTileFromEvent(e, isStart = false) {
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // 현재 좌표에 있는 요소 가져오기
     const el = document.elementFromPoint(x, y);
+    
     if (!el) return null;
+    
+    // 요소가 타일(tile)인 경우
     if (el.classList.contains('tile')) {
+        // [핵심 변경]
+        // 1. 드래그 시작(isStart === true)일 경우:
+        //    거리 계산 없이 그냥 타일 위에만 있으면 무조건 OK (100% 영역)
+        if (isStart) {
+            return el;
+        }
+
+        // 2. 드래그 중(Move)일 경우:
+        //    대각선 오입력을 방지하기 위해 타일 중심부만 인식 (영역 제한)
         const rect = el.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
-        const safeRadius = (rect.width / 2) * 0.7; 
-        if (Math.hypot(x - centerX, y - centerY) < safeRadius) return el;
+        
+        // * 영역 비율 설정 *
+        // 0.6 = 60%, 0.7 = 70% 
+        // 좁다고 느끼셨으니 0.75(75%) 정도로 늘려보았습니다.
+        // 필요하면 이 숫자를 0.6이나 0.8로 조절하세요.
+        const sensitivity = 0.75; 
+        
+        const safeRadius = (rect.width / 2) * sensitivity; 
+        
+        // 중심점과의 거리가 안전 반경 이내일 때만 인정
+        if (Math.hypot(x - centerX, y - centerY) < safeRadius) {
+            return el;
+        }
     }
     return null;
 }
@@ -536,7 +596,8 @@ function startDrag(e) {
     hintTooltip.classList.remove('show');
     document.querySelectorAll('.tile.idle-hint').forEach(t => t.classList.remove('idle-hint'));
 
-    const startTile = getTileFromEvent(e);
+    // [수정] 뒤에 true를 붙여줍니다 (여기는 시작이니까 100% 인식!)
+    const startTile = getTileFromEvent(e, true);
     if (!startTile) return;
 
     isDragging = true; selectedIndices = []; clearSelection();
@@ -552,7 +613,8 @@ function startDrag(e) {
 function moveDrag(e) {
     if (!isDragging) return; 
     if(e.touches && e.cancelable) e.preventDefault(); 
-    const tile = getTileFromEvent(e);
+    // [수정] 여기는 그냥 두거나 false를 넣습니다 (이동 중엔 엄격하게!)
+    const tile = getTileFromEvent(e, false);
     if (tile) processTile(tile);
 }
 
