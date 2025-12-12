@@ -121,7 +121,7 @@ const LEVEL_WORDS = {
         { word: "슈퍼주니어", category: "가수", desc: "한류 제왕이라 불리는 장수 아이돌 그룹.", eng: "Super Junior", eng_desc: "A long-running K-pop boy group." },
         { word: "악동뮤지션", category: "가수", desc: "천재적인 작사, 작곡 능력의 남매 듀오.", eng: "AKMU", eng_desc: "A talented brother-sister duo." },
         { word: "여자아이들", category: "가수", desc: "독보적인 콘셉트의 실력파 걸그룹.", eng: "(G)I-DLE", eng_desc: "A girl group known for their unique concepts." },
-        { word: "투모로우바이", category: "가수", desc: "청량함과 신비로움을 가진 보이그룹.", eng: "TXT", eng_desc: "A boy group known for their fresh and mysterious vibe." },
+        { word: "투모로우바이투게더", category: "가수", desc: "청량함과 신비로움을 가진 보이그룹.", eng: "TXT", eng_desc: "A boy group known for their fresh and mysterious vibe." },
 
         // 음식
         { word: "아이스크림", category: "음식", desc: "얼려서 만드는 달콤한 디저트.", eng: "Ice Cream", eng_desc: "A frozen sweet dessert." },

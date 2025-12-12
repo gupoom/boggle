@@ -1,7 +1,6 @@
 import { WordBoard } from './board.js';
 import { assembleHangul } from './rules.js';
 import { GAME_CONFIG } from './config.js';
-// import { GAME_DICTIONARY } ... -> HTML에서 로드됨 (Object 형태)
 
 let gridData = [];
 let selectedIndices = [];
@@ -18,7 +17,6 @@ let currentGridSize = 4;
 let currentLevel = 'all';
 
 let totalWordCount = 0;
-
 let currentHiddenWord = "";
 let currentHiddenCategory = "";
 
@@ -26,7 +24,10 @@ let hiddenWordPath = [];
 let currentHintStep = 0;
 let lastActionTime = Date.now();
 
-const COMBINED_DICTIONARY = new Set(); // 게임 로직용 (단어 존재 여부 확인)
+// [추가] 설정 변수
+let isVibrationOn = true;
+
+const COMBINED_DICTIONARY = new Set(); 
 const LEVEL_DICTIONARY = new Set();
 
 const gridElement = document.getElementById('grid');
@@ -44,6 +45,8 @@ const targetScoreElement = document.getElementById('targetScoreDisplay');
 const timerElement = document.getElementById('timer');
 const resultModal = document.getElementById('resultModal');
 const optionModal = document.getElementById('optionModal');
+// [추가] 설정 모달 참조
+const settingsModal = document.getElementById('settingsModal');
 const introScreen = document.getElementById('introScreen');
 
 const hintBar = document.getElementById('hintBar');
@@ -61,6 +64,37 @@ if (targetScoreElement) {
 
 document.getElementById('hintBar').addEventListener('click', showHint);
 
+// --- [추가/수정] 기능 함수들 ---
+
+// 1. 세로 화면 잠금 시도 함수
+async function lockPortrait() {
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock("portrait");
+        } else if (screen.lockOrientation) {
+             screen.lockOrientation("portrait");
+        }
+    } catch (e) {
+        console.log("세로 모드 고정 실패 (지원하지 않는 브라우저일 수 있음):", e);
+    }
+}
+
+// 2. 진동 토글 함수
+window.toggleVibration = function(checkbox) {
+    isVibrationOn = checkbox.checked;
+    if (isVibrationOn) triggerHaptic('tap');
+}
+
+// 3. 설정 모달 열기/닫기
+window.openSettingsModal = function() {
+    triggerHaptic('tap');
+    settingsModal.classList.add('active');
+}
+window.closeSettingsModal = function() {
+    triggerHaptic('tap');
+    settingsModal.classList.remove('active');
+}
+
 window.useHint = function() {
     triggerHaptic('tap');
     showIdleHint();
@@ -75,6 +109,90 @@ function enterFullScreen() {
         requestFullScreen.call(docEl).catch(err => {
             console.log("풀스크린 모드 진입 실패:", err);
         });
+    }
+}
+
+// ----------------------------------------------------
+// [중요] 게임 시작 로직 분리
+// ----------------------------------------------------
+
+// Case A: 인트로에서 처음 시작할 때 (광고 X, 카운트다운 X)
+window.startFromIntro = function() {
+    // 1. 세로 모드 고정 시도
+    lockPortrait();
+    if (isMobileDevice()) enterFullScreen();
+
+    // 2. 인트로 숨기기
+    introScreen.classList.add('hidden');
+    
+    // 3. 즉시 게임 초기화 (카운트다운/광고 없음)
+    triggerHaptic('tap');
+    initGame();
+};
+
+// Case B: 실제 게임(카운트다운) 시퀀스 (광고 후 콜백용)
+function runCountdownSequence() {
+    resultModal.classList.remove('active');
+    countdownOverlay.classList.add('active');
+    
+    triggerHaptic('tap'); 
+
+    let count = 3;
+    updateCount(count);
+
+    const countInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            updateCount(count);
+        } else {
+            clearInterval(countInterval);
+            countdownOverlay.classList.remove('active');
+            initGame();
+        }
+    }, 900);
+}
+
+// Case C: [새 게임] 버튼 눌렀을 때 (광고 O -> 카운트다운 O)
+window.startWithCountdown = function() {
+    lockPortrait(); // 혹시 풀렸을 때를 대비해 재시도
+
+    // 광고 로직: 광고 매니저가 있고 + 광고 제거를 안 했다면?
+    if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
+        console.log("광고를 표시하고, 닫히면 게임을 시작합니다.");
+        AdManager.showInterstitial(runCountdownSequence);
+    } else {
+        console.log("광고 없이 카운트다운 시작");
+        runCountdownSequence();
+    }
+};
+
+// ----------------------------------------------------
+
+function isMobileDevice() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return /android|ipad|iphone|ipod/i.test(userAgent);
+}
+
+function updateCount(num) {
+    countdownText.textContent = num;
+    countdownCard.classList.remove('card-flip-action');
+    void countdownCard.offsetWidth; 
+    countdownCard.classList.add('card-flip-action');
+    triggerHaptic('tap'); 
+}
+
+window.startGame = function() {
+    window.startWithCountdown();
+};
+
+// [수정] 진동 설정(isVibrationOn) 반영
+function triggerHaptic(type) {
+    if (!isVibrationOn) return; // 꺼져있으면 리턴
+
+    if (window.navigator && window.navigator.vibrate) {
+        if (type === 'tap') window.navigator.vibrate(40); 
+        else if (type === 'success') window.navigator.vibrate([50, 50, 50]); 
+        else if (type === 'fail') window.navigator.vibrate(300); 
     }
 }
 
@@ -112,61 +230,6 @@ function solveBoard(grid, size) {
     return found;
 }
 
-// 1. 모바일 디바이스 체크 함수 (OS 기준)
-function isMobileDevice() {
-    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-    // Android, iOS(iPhone, iPad, iPod) 등을 체크
-    return /android|ipad|iphone|ipod/i.test(userAgent);
-}
-
-// 2. startWithCountdown 함수에 적용
-window.startWithCountdown = function() {
-    // [수정] 화면 크기가 아니라 OS를 체크하여 모바일인 경우에만 전체화면 시도
-    if (isMobileDevice()) {
-        enterFullScreen();
-    }
-    
-    introScreen.classList.add('hidden');
-    resultModal.classList.remove('active');
-    countdownOverlay.classList.add('active');
-    
-    triggerHaptic('tap'); 
-
-    let count = 3;
-    updateCount(count);
-
-    const countInterval = setInterval(() => {
-        count--;
-        if (count > 0) {
-            updateCount(count);
-        } else {
-            clearInterval(countInterval);
-            countdownOverlay.classList.remove('active');
-            initGame();
-        }
-    }, 900);
-};
-
-function updateCount(num) {
-    countdownText.textContent = num;
-    countdownCard.classList.remove('card-flip-action');
-    void countdownCard.offsetWidth; 
-    countdownCard.classList.add('card-flip-action');
-    triggerHaptic('tap'); 
-}
-
-window.startGame = function() {
-    window.startWithCountdown();
-};
-
-function triggerHaptic(type) {
-    if (window.navigator && window.navigator.vibrate) {
-        if (type === 'tap') window.navigator.vibrate(40); 
-        else if (type === 'success') window.navigator.vibrate([50, 50, 50]); 
-        else if (type === 'fail') window.navigator.vibrate(300); 
-    }
-}
-
 function showFloatingText(x, y, text) {
     const el = document.createElement('div');
     el.className = 'floating-text';
@@ -198,7 +261,6 @@ function initLevelDictionary() {
         });
     }
     
-    // [수정] GAME_DICTIONARY는 이제 Object입니다. 키(단어)만 뽑아서 Set에 넣습니다.
     if (typeof GAME_DICTIONARY !== 'undefined') {
         Object.keys(GAME_DICTIONARY).forEach(word => {
             COMBINED_DICTIONARY.add(word);
@@ -227,12 +289,9 @@ function updateStatsUI() {
         if(statWordGroup) statWordGroup.style.display = 'flex';
         if(btnHint) btnHint.classList.remove('hidden');
         if(targetScoreElement) targetScoreElement.style.visibility = 'hidden';
-    } else { // Challenge Mode
+    } else { 
         if(statScoreGroup) statScoreGroup.style.display = 'flex';
-        
-        // [수정] 챌린지 모드에서도 단어 수(찾은것/전체)를 숨기지 않고 보여줌
         if(statWordGroup) statWordGroup.style.display = 'flex'; 
-        
         if(btnHint) btnHint.classList.add('hidden');
         if(targetScoreElement) targetScoreElement.style.visibility = 'visible';
     }
@@ -299,9 +358,8 @@ let toastTimer = null;
 function showToast(word, desc) {
     const toast = document.getElementById('toast');
     const tDesc = document.getElementById('toastDesc');
-    const tWord = document.getElementById('toastWord'); // 필요하면 사용
+    const tWord = document.getElementById('toastWord'); 
 
-    // [수정] 영문 뜻이 있으면 그것을 표시
     tDesc.textContent = desc;
 
     if (toastTimer) clearTimeout(toastTimer);
@@ -348,12 +406,9 @@ function showIdleHint() {
 
     const tile = document.querySelector(`.tile[data-index="${startIdx}"]`);
     if (tile) {
-        // [수정] 기존 'idle-hint' 대신 'hint-highlight' 사용
         tile.classList.remove('hint-highlight');
-        void tile.offsetWidth; // 애니메이션 리셋용
+        void tile.offsetWidth; 
         tile.classList.add('hint-highlight');
-        
-        // 지속 시간은 1.5초 (히든 힌트와 비슷하게 맞춤)
         setTimeout(() => { tile.classList.remove('hint-highlight'); }, 1500);
     }
     lastActionTime = Date.now(); 
@@ -475,7 +530,7 @@ function getTileFromEvent(e) {
 }
 
 function startDrag(e) {
-    if(resultModal.classList.contains('active') || optionModal.classList.contains('active')) return;
+    if(resultModal.classList.contains('active') || optionModal.classList.contains('active') || settingsModal.classList.contains('active')) return;
     
     lastActionTime = Date.now();
     hintTooltip.classList.remove('show');
@@ -583,10 +638,8 @@ function checkWord(word, rect) {
         return;
     }
 
-    // [수정] 사전 체크 (Set.has -> Object Property Check로 변경해도 되지만, COMBINED_DICTIONARY는 Set이므로 그대로 사용)
     const inGameDic = COMBINED_DICTIONARY.has(word);
     
-    // Level words(히든 등)는 별도 체크
     let levelEntry = null;
     if (typeof LEVEL_WORDS !== 'undefined') {
         for (const level in LEVEL_WORDS) {
@@ -601,7 +654,6 @@ function checkWord(word, rect) {
             possibleWords.delete(word);
         }
 
-        // 단어 수 UI 업데이트
         if(foundCountEl) foundCountEl.textContent = foundWords.size;
 
         const tileCount = selectedIndices.length;
@@ -655,13 +707,11 @@ function checkWord(word, rect) {
             resultModal.classList.add('active');
         }
 
-        // [수정] 영어 뜻 가져오기 (없으면 기본 메시지)
         let engMeaning = "";
         if (typeof GAME_DICTIONARY !== 'undefined') {
             engMeaning = GAME_DICTIONARY[word] || "";
         }
         
-        // 토스트에는 짧게 표시 (너무 길면 잘라내기 등은 필요시 추가)
         let toastMsg = engMeaning;
         if (!toastMsg) toastMsg = "영어 뜻 데이터가 없습니다.";
         
@@ -686,27 +736,22 @@ function addWordTag(word, pts, isHidden = false) {
     wordListElement.insertBefore(tag, wordListElement.firstChild);
 }
 
-// [수정] 바텀 시트에 영어 뜻 표시
 window.openSheet = function(word) {
     triggerHaptic('tap');
     const overlay = document.getElementById('sheetOverlay'); 
     const title = document.getElementById('sheetWord'); 
-    const elEng = document.getElementById('sheetEng'); // 기존 영어 단어용 (안 쓰면 숨기거나 재활용)
+    const elEng = document.getElementById('sheetEng'); 
     const elEngDesc = document.getElementById('sheetEngDesc');
-    const elDesc = document.getElementById('sheetDesc'); // 여기에 영어 뜻 표시
+    const elDesc = document.getElementById('sheetDesc'); 
     
     title.textContent = word; 
     
-    // 사전에서 뜻 가져오기
     let definition = "";
     if (typeof GAME_DICTIONARY !== 'undefined') {
         definition = GAME_DICTIONARY[word] || "영어 뜻 데이터가 없습니다.";
     }
 
-    // 화면에 표시
     elDesc.textContent = definition;
-    
-    // 기존 요소 초기화
     elEng.textContent = "";
     elEngDesc.textContent = "";
 
@@ -766,6 +811,7 @@ function gameOver(isSuccess) {
         desc.textContent = `아쉽네요. ${currentScore}점에 그쳤습니다.`;
         btn.className = "btn-full bg-red"; btn.textContent = "다시 도전";
     }
+
     resultModal.classList.add('active');
 }
 

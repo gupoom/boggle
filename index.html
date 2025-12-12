@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="screen-orientation" content="portrait">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="t5-orientation" content="portrait">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
@@ -12,7 +14,82 @@
     <title>HAN-GL MOA</title>
     
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        /* 헤더 컨트롤 영역 (새 게임 버튼 + 설정 버튼) */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* 설정 아이콘 버튼 */
+        .btn-icon-setting {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .btn-icon-setting:active { background: rgba(255,255,255,0.2); transform: scale(0.95); }
+
+        /* 설정 팝업 내부 스타일 */
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 16px;
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-label { display: flex; align-items: center; gap: 8px; }
+
+        /* 토글 스위치 CSS */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #555; transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #8b5cf6; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        input:disabled + .slider { background-color: #333; opacity: 0.5; cursor: not-allowed; }
+
+        .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 15px 0; border: none; }
+        
+        /* 프리미엄 버튼 스타일 */
+        .btn-premium {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
+        }
+        .btn-premium:active { transform: scale(0.98); }
+    </style>
+
+    <script src="js/confetti.js"></script>
     <script src="js/levels.js"></script>
     <script src="js/dictionary.js"></script>
 </head>
@@ -20,7 +97,7 @@
 
     <div id="introScreen" class="intro-screen">
         <img src="images/logo_intro.png" alt="HAN-GL MOA" class="intro-logo">
-        <button class="btn-start" onclick="startWithCountdown()">GAME START</button>
+        <button class="btn-start" onclick="startFromIntro()">GAME START</button>
     </div>
 
     <div id="countdownOverlay" class="countdown-overlay">
@@ -37,9 +114,19 @@
 
     <div class="header-area">
         <img src="images/logo_game.png" alt="MOA" class="header-logo">
-        <button class="btn-new-game" onclick="startWithCountdown()">
-            <span>↻ 새 게임</span>
-        </button>
+        
+        <div class="header-controls">
+            <button class="btn-new-game" onclick="startWithCountdown()">
+                <span>↻ 새 게임</span>
+            </button>
+            
+            <button id="btnSettings" class="btn-icon-setting" onclick="openSettingsModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 5 4.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <div class="control-bar">
@@ -94,11 +181,9 @@
                 <span id="hintText">힌트</span>
                 <span id="hintScore" class="mission-score">+50</span>
             </div>
-
             <button id="btnHint" class="hint-btn hidden" onclick="useHint()">
                 💡 힌트 보기
             </button>
-            
         </div>
 
         <div class="current-word" id="currentWord">시작</div>
@@ -110,6 +195,38 @@
             <div class="modal-title" id="optTitle">설정</div>
             <div class="option-list" id="optList"></div>
             <button class="btn-full btn-gray" onclick="closeOptionModal()">닫기</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-title">설정</div>
+            
+            <div style="margin: 20px 0;">
+                <div class="setting-item">
+                    <div class="setting-label">📳 진동 효과</div>
+                    <label class="switch">
+                        <input type="checkbox" id="vibrateToggle" checked onchange="toggleVibration(this)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">🔊 효과음 <span style="font-size:12px; opacity:0.6; margin-left:5px;">(준비중)</span></div>
+                    <label class="switch">
+                        <input type="checkbox" disabled>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <button id="btnRemoveAdsInSetting" class="btn-premium" onclick="AdManager.purchaseRemoveAds()">
+                🚫 광고 제거 (프리미엄)
+            </button>
+
+            <button class="btn-full btn-gray" style="margin-top:15px;" onclick="closeSettingsModal()">닫기</button>
         </div>
     </div>
 
@@ -136,6 +253,8 @@
         </div>
     </div>
 
+    <script src="js/ads.js"></script> 
     <script type="module" src="js/game.js"></script>
+    
 </body>
 </html>
