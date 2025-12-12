@@ -2,6 +2,70 @@ import { WordBoard } from './board.js';
 import { assembleHangul } from './rules.js';
 import { GAME_CONFIG } from './config.js';
 
+// --- [추가] 효과음 생성기 (SoundManager) ---
+const SoundManager = {
+    ctx: null,
+    isMuted: false, // 기본값: 소리 켜짐 (설정과 연동 필요)
+
+    init: function() {
+        if (!this.ctx) {
+            // 브라우저 오디오 객체 생성
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
+    // 1. 타일 선택 소리 (뽁!)
+    playTap: function() {
+        if (this.isMuted || !this.ctx) return;
+        this.playTone(800, 'sine', 0.1); 
+    },
+
+    // 2. 정답 소리 (띠링!)
+    playSuccess: function() {
+        if (this.isMuted || !this.ctx) return;
+        // 화음 효과 (도-미)
+        this.playTone(523.25, 'sine', 0.2); // 도
+        setTimeout(() => this.playTone(659.25, 'sine', 0.3), 100); // 미
+    },
+
+    // 3. 오답/이미 찾음 소리 (뿝...)
+    playFail: function() {
+        if (this.isMuted || !this.ctx) return;
+        this.playTone(150, 'sawtooth', 0.3); // 낮은 톱니파
+    },
+
+    // 4. 레벨업/보너스 소리 (샤라랑~)
+    playBonus: function() {
+        if (this.isMuted || !this.ctx) return;
+        this.playTone(523.25, 'sine', 0.1);
+        setTimeout(() => this.playTone(659.25, 'sine', 0.1), 80);
+        setTimeout(() => this.playTone(783.99, 'sine', 0.2), 160);
+        setTimeout(() => this.playTone(1046.50, 'sine', 0.4), 240);
+    },
+
+    // 소리 합성 함수 (주파수, 파형, 지속시간)
+    playTone: function(freq, type, duration) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = type; 
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        
+        // 볼륨이 자연스럽게 줄어들도록 (페이드 아웃)
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+};
+
 let gridData = [];
 let selectedIndices = [];
 let foundWords = new Set();
@@ -85,6 +149,14 @@ window.toggleVibration = function(checkbox) {
     if (isVibrationOn) triggerHaptic('tap');
 }
 
+window.toggleSound = function(checkbox) {
+    SoundManager.isMuted = !checkbox.checked;
+    if (!SoundManager.isMuted) {
+        SoundManager.init(); // 소리를 켜면 오디오 시스템 준비
+        SoundManager.playSuccess(); // 테스트 소리
+    }
+}
+
 // 3. 설정 모달 열기/닫기
 window.openSettingsModal = function() {
     triggerHaptic('tap');
@@ -162,26 +234,9 @@ window.startWithCountdown = function() {
     }
 };
 
-// 주소창 숨기기용 함수
-function hideBrowserUI() {
-    // 1. 화면 높이를 아주 조금 늘려서 스크롤이 생기게 만듦
-    document.body.style.minHeight = "100vh";
-    document.body.style.height = "calc(100vh + 1px)"; 
-    
-    // 2. 0.1초 뒤에 강제로 스크롤을 1px 내려서 상단 바가 접히게 유도
-    setTimeout(function() {
-        window.scrollTo(0, 1);
-        
-        // 3. 스크롤 후 다시 높이를 원상복구 (선택사항, 게임에 따라 유지해도 됨)
-        // document.body.style.height = "100vh"; 
-    }, 100);
-}
-
 // 기존 함수에 적용
 window.startFromIntro = function() {
     // enterFullScreen();  <-- 이건 지우셨죠? (OK)
-    
-    hideBrowserUI(); // [추가] 주소창 숨기기 시도
     
     introScreen.classList.add('hidden');
     triggerHaptic('tap');
@@ -190,8 +245,6 @@ window.startFromIntro = function() {
 
 window.startWithCountdown = function() {
     // enterFullScreen(); <-- 이것도 지우셨죠? (OK)
-    
-    hideBrowserUI(); // [추가] 주소창 숨기기 시도
 
     if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
         AdManager.showInterstitial(runCountdownSequence);
@@ -449,6 +502,7 @@ function showIdleHint() {
 }
 
 function initGame() {
+    SoundManager.init();
     stopTimer();
     resultModal.classList.remove('active');
     currentScore = 0;
@@ -628,6 +682,7 @@ function processTile(tile) {
         void tile.offsetWidth;
         tile.classList.add('pop');
         triggerHaptic('tap'); 
+        SoundManager.playTap(); // [추가] 뽁! 소리
         document.querySelectorAll('.tile').forEach(t => t.classList.remove('last-selected'));
         tile.classList.add('last-selected');
         updateCurrentWord();
@@ -688,6 +743,7 @@ function checkWord(word, rect) {
         wordDisplay.textContent = "이미 찾음!"; 
         wordDisplay.classList.add('anim-fail', 'shake'); 
         triggerHaptic('fail');
+        SoundManager.playFail(); // [추가] 이미 찾음 (뿝...)
         setTimeout(() => wordDisplay.classList.remove('anim-fail', 'shake'), 500); 
         return; 
     }
@@ -695,6 +751,7 @@ function checkWord(word, rect) {
     if (selectedIndices.length < 3) {
         wordDisplay.classList.add('anim-fail', 'shake');
         triggerHaptic('fail');
+        SoundManager.playFail(); // [추가] 너무 짧음 (뿝...)
         showToast(word, "3칸 이상만 점수로 인정돼요");
         setTimeout(() => wordDisplay.classList.remove('anim-fail', 'shake'), 500);
         return;
@@ -723,6 +780,7 @@ function checkWord(word, rect) {
         
         let isHiddenFound = false;
         if (word === currentHiddenWord) {
+            SoundManager.playBonus(); // [추가] 히든 단어 찾음 (샤라랑~)
             isHiddenFound = true;
             pts += GAME_CONFIG.HIDDEN_BONUS_SCORE;
             triggerConfetti(); 
@@ -737,6 +795,7 @@ function checkWord(word, rect) {
 
         if (rect) showFloatingText(rect.left + rect.width/2, rect.top, `+${pts}`);
         triggerHaptic('success');
+        SoundManager.playSuccess(); // [추가] 일반 정답 (띠링!)
 
         if (pts > 0) {
             currentScore += pts;
@@ -761,6 +820,7 @@ function checkWord(word, rect) {
 
             triggerConfetti();
             triggerHaptic('success');
+            SoundManager.playBonus(); // [추가] 히든 단어 찾음 (샤라랑~)
             icon.textContent = "🏆"; 
             title.textContent = "PERFECT!";
             desc.textContent = "와우! 이 보드의 모든 단어를 찾으셨습니다!";
@@ -785,6 +845,7 @@ function checkWord(word, rect) {
     } else {
         wordDisplay.classList.add('anim-fail', 'shake'); 
         triggerHaptic('fail');
+        SoundManager.playFail(); // [추가] 없는 단어 (뿝...)
         setTimeout(() => wordDisplay.classList.remove('anim-fail', 'shake'), 500);
     }
 }

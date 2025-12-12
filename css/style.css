@@ -21,7 +21,7 @@ body {
     background-color: var(--bg-color); 
     color: var(--text-color);
     display: flex; flex-direction: column;
-    height: 100dvh; height: 100dvh;
+    height: 100dvh;
     margin: 0; padding: 12px 16px; 
     overflow: hidden; user-select: none;
     -webkit-user-select: none; /* [추가] 사파리용 선택 방지 */
