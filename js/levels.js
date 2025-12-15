@@ -22,6 +22,7 @@ const LEVEL_WORDS = {
         { word: "지코", category: "가수", desc: "트렌디한 힙합 음악을 만드는 래퍼이자 프로듀서.", eng: "Zico", eng_desc: "A trendy rapper and producer in the K-pop scene." },
         { word: "태연", category: "가수", desc: "소녀시대의 리더이자 믿고 듣는 보컬리스트.", eng: "Taeyeon", eng_desc: "Leader of Girls' Generation and a renowned vocalist." },
         { word: "에일리", category: "가수", desc: "폭발적인 가창력을 가진 디바.", eng: "Ailee", eng_desc: "A solo singer known for her powerful vocal skills." },
+        { word: "우즈", category: "가수", eng: "WOODZ" },
 
         // 관광지/장소
         { word: "해운대", category: "관광지", desc: "부산을 대표하는 유명한 해수욕장.", eng: "Haeundae", eng_desc: "A famous beach representing Busan, South Korea." },
@@ -57,7 +58,6 @@ const LEVEL_WORDS = {
         { word: "호랑이", category: "동물", desc: "용맹함을 상징하는 맹수.", eng: "Tiger", eng_desc: "A large wild cat with stripes." },
         { word: "무지개", category: "자연", desc: "비 온 뒤 하늘에 뜨는 일곱 빛깔 띠.", eng: "Rainbow", eng_desc: "A colorful arc appearing in the sky after rain." },
         { word: "소나무", category: "식물", desc: "늘 푸른 잎을 가진 대표적인 침엽수.", eng: "Pine Tree", eng_desc: "An evergreen coniferous tree." },
-        { word: "해바라기", category: "식물", desc: "해를 향해 자라는 노란 꽃.", eng: "Sunflower", eng_desc: "A tall plant with large yellow flowers." },
         { word: "자동차", category: "탈것", desc: "엔진의 힘으로 바퀴를 굴려 가는 차.", eng: "Car", eng_desc: "A road vehicle typically with four wheels." },
         { word: "비행기", category: "탈것", desc: "하늘을 날아다니는 교통수단.", eng: "Airplane", eng_desc: "A powered flying vehicle with wings." },
         { word: "자전거", category: "탈것", desc: "두 바퀴를 발로 굴려 가는 탈것.", eng: "Bicycle", eng_desc: "A vehicle composed of two wheels held in a frame." },
@@ -79,7 +79,7 @@ const LEVEL_WORDS = {
         { word: "소녀시대", category: "가수", desc: "한류 열풍을 이끈 전설적인 걸그룹.", eng: "Girls' Generation", eng_desc: "A legendary girl group that led the Hallyu wave." },
         { word: "동방신기", category: "가수", desc: "아시아의 별이라 불리는 보이그룹.", eng: "TVXQ", eng_desc: "A boy group known as the 'Kings of K-pop'." },
         { word: "데이식스", category: "가수", desc: "모든 순간을 노래하는 밴드.", eng: "DAY6", eng_desc: "A popular Korean pop-rock band." },
-        { word: "방탄소년단", category: "가수", desc: "글로벌 팝 아이콘이 된 보이그룹.", eng: "BTS", eng_desc: "A boy group that became global pop icons." },
+        { word: "헌트릭스", category: "가수", eng: "Huntrix" },
 
         // 관광지/장소
         { word: "에버랜드", category: "관광지", desc: "대한민국 최대 규모의 테마파크.", eng: "Everland", eng_desc: "South Korea's largest theme park." },
@@ -114,6 +114,7 @@ const LEVEL_WORDS = {
         { word: "대기만성", category: "사자성어", desc: "큰 그릇은 늦게 이루어진다는 뜻.", eng: "Late bloomer", eng_desc: "Great talents mature late." },
         { word: "유비무환", category: "사자성어", desc: "미리 준비하면 걱정이 없음.", eng: "Better safe than sorry", eng_desc: "Preparation prevents future worries." },
         { word: "권선징악", category: "사자성어", desc: "착한 일을 권하고 악한 일을 벌함.", eng: "Poetic justice", eng_desc: "Promoting good and punishing evil." }
+        { word: "해바라기", category: "식물", desc: "해를 향해 자라는 노란 꽃.", eng: "Sunflower", eng_desc: "A tall plant with large yellow flowers." },
     ],
 
     // [Level 3] 고급 (5글자 이상 통합)
@@ -122,7 +123,8 @@ const LEVEL_WORDS = {
         { word: "슈퍼주니어", category: "가수", desc: "한류 제왕이라 불리는 장수 아이돌 그룹.", eng: "Super Junior", eng_desc: "A long-running K-pop boy group." },
         { word: "악동뮤지션", category: "가수", desc: "천재적인 작사, 작곡 능력의 남매 듀오.", eng: "AKMU", eng_desc: "A talented brother-sister duo." },
         { word: "여자아이들", category: "가수", desc: "독보적인 콘셉트의 실력파 걸그룹.", eng: "(G)I-DLE", eng_desc: "A girl group known for their unique concepts." },
-        { word: "투모로우바이투게더", category: "가수", desc: "청량함과 신비로움을 가진 보이그룹.", eng: "TXT", eng_desc: "A boy group known for their fresh and mysterious vibe." },
+        { word: "방탄소년단", category: "가수", desc: "글로벌 팝 아이콘이 된 보이그룹.", eng: "BTS", eng_desc: "A boy group that became global pop icons." },
+        { word: "볼빨간사춘기", category: "가수", eng: "BOL4" },
 
         // 음식
         { word: "아이스크림", category: "음식", desc: "얼려서 만드는 달콤한 디저트.", eng: "Ice Cream", eng_desc: "A frozen sweet dessert." },
@@ -149,7 +151,7 @@ const LEVEL_WORDS = {
         { word: "한국민속촌", category: "관광지", desc: "옛 조상들의 생활 모습을 재현한 곳.", eng: "Korean Folk Village", eng_desc: "A village reproducing traditional Korean life." },
         { word: "오징어게임", category: "드라마", desc: "전 세계적으로 히트한 생존 서바이벌 드라마.", eng: "Squid Game", eng_desc: "A hit survival drama series." },
         { word: "이상한변호사", category: "드라마", desc: "천재적인 두뇌를 가진 변호사 우영우 이야기.", eng: "Extraordinary Attorney Woo", eng_desc: "A drama about a genius lawyer." },
-        { word: "슬기로운생활", category: "드라마", desc: "병원, 감빵 등 특정 장소에서의 생활을 다룬 시리즈.", eng: "Wise Life Series", eng_desc: "A drama series depicting life in specific settings." },
+        { word: "슬기로운의사생활", category: "드라마", desc: "병원, 감빵 등 특정 장소에서의 생활을 다룬 시리즈.", eng: "Wise Life Series", eng_desc: "A drama series depicting life in specific settings." },
         { word: "나혼자산다", category: "예능", desc: "1인 가구 연예인들의 일상을 보여주는 프로그램.", eng: "I Live Alone", eng_desc: "A reality show featuring celebrities living alone." },
         { word: "전지적참견시점", category: "예능", desc: "매니저들의 제보로 스타의 일상을 관찰하는 예능.", eng: "Omniscient Interfering View", eng_desc: "A show observing stars through their managers." },
         { word: "놀면뭐하니", category: "예능", desc: "유재석이 다양한 부캐로 활동하는 예능.", eng: "Hangout with Yoo", eng_desc: "A variety show featuring Yoo Jae-suk." },

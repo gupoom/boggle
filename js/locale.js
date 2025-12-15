@@ -50,9 +50,9 @@ const MESSAGES = {
                 'special': '신조어'
             },
             categories: {
-                "가수": "Singer", "관광지": "Place", "음식": "Food", "동물": "Animal",
-                "자연": "Nature", "식물": "Plant", "탈것": "Vehicle", "가전": "Appliance",
-                "악기": "Instrument", "장소": "Place", "예능": "TV Show", "국가": "Country",
+                "가수": "가수", "관광지": "관광지", "음식": "음식", "동물": "동물",
+                "자연": "자연", "식물": "식물", "탈것": "탈것", "가전": "가전",
+                "악기": "악기", "장소": "장소", "예능": "예능", "국가": "국가",
                 "사자성어": "Idiom", "드라마": "Drama", "사회": "Society", "신조어": "Slang",
                 "기본": "Basic"
             }
