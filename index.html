@@ -7,6 +7,7 @@
     <meta name="screen-orientation" content="portrait">
     <meta name="x5-orientation" content="portrait">
     <meta name="t5-orientation" content="portrait">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
@@ -15,80 +16,6 @@
     
     <link rel="stylesheet" href="css/style.css">
     
-    <style>
-        /* 헤더 컨트롤 영역 (새 게임 버튼 + 설정 버튼) */
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        /* 설정 아이콘 버튼 */
-        .btn-icon-setting {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: #fff;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-        .btn-icon-setting:active { background: rgba(255,255,255,0.2); transform: scale(0.95); }
-
-        /* 설정 팝업 내부 스타일 */
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            color: #fff;
-            font-size: 16px;
-        }
-        .setting-item:last-child { border-bottom: none; }
-        .setting-label { display: flex; align-items: center; gap: 8px; }
-
-        /* 토글 스위치 CSS */
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #555; transition: .4s; border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute; content: "";
-            height: 18px; width: 18px;
-            left: 3px; bottom: 3px;
-            background-color: white; transition: .4s; border-radius: 50%;
-        }
-        input:checked + .slider { background-color: #8b5cf6; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        input:disabled + .slider { background-color: #333; opacity: 0.5; cursor: not-allowed; }
-
-        .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 15px 0; border: none; }
-        
-        /* 프리미엄 버튼 스타일 */
-        .btn-premium {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: #000;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
-        }
-        .btn-premium:active { transform: scale(0.98); }
-    </style>
-
     <script src="js/confetti.js"></script>
     <script src="js/levels.js"></script>
     <script src="js/dictionary.js"></script>
@@ -96,28 +23,27 @@
 <body>
 
     <div id="introScreen" class="intro-screen">
-    <div class="intro-bg-container">
-        <div class="board-3d">
-            <img src="images/intro_board.png" alt="Game Board" class="board-img">
-            <div class="hand-pointer">👆</div>
-            <svg class="drag-trail" width="100%" height="100%">
-                <path d="M120,110 L180,110 L120,180 L180,180" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-dasharray="300" stroke-dashoffset="300"/>
-            </svg>
+        <div class="intro-bg-container">
+            <div class="board-3d">
+                <img src="images/intro_board.png" alt="Game Board" class="board-img">
+                <svg class="drag-trail" width="100%" height="100%">
+                    <path d="M120,110 L180,110 L120,180 L180,180" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-dasharray="300" stroke-dashoffset="300"/>
+                </svg>
+            </div>
+            <div class="bg-overlay"></div>
         </div>
-        <div class="bg-overlay"></div>
-    </div> 
 
-    <div class="intro-content">
-        <img src="images/logo_intro.png" alt="HAN-GL MOA" class="intro-logo">
-        <button class="btn-start" onclick="startFromIntro()">GAME START</button>
+        <div class="intro-content">
+            <img src="images/logo_intro.png" alt="HAN-GL MOA" class="intro-logo">
+            <button class="btn-start" onclick="startFromIntro()">GAME START</button>
+        </div>
     </div>
-</div>
 
     <div id="countdownOverlay" class="countdown-overlay">
         <div id="countdownCard" class="countdown-card">
             <span id="countdownText" class="countdown-text">3</span>
         </div>
-        <div class="countdown-msg">새 게임을 시작합니다</div>
+        <div class="countdown-msg">Ready!</div>
     </div>
 
     <div id="toast" class="toast hidden">
@@ -130,7 +56,7 @@
         
         <div class="header-controls">
             <button class="btn-new-game" onclick="startWithCountdown()">
-                <span>↻ 새 게임</span>
+                <span id="uiNewGame">↻ 새 게임</span>
             </button>
             
             <button id="btnSettings" class="btn-icon-setting" onclick="openSettingsModal()">
@@ -144,12 +70,12 @@
 
     <div class="control-bar">
         <button id="btnGridSize" class="setting-btn" onclick="openOptionModal('grid')">
-            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+            <svg class="setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
             <span id="txtGridSize">4x4</span>
         </button>
 
         <button id="btnLevel" class="setting-btn" onclick="openOptionModal('level')">
-            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+            <svg class="setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
             <span id="txtLevel">랜덤</span>
         </button>
 
@@ -169,7 +95,7 @@
         </div>
 
         <div class="stat-group" id="statWordGroup" style="display:none;">
-            <span class="stat-label">단어 (찾은것/전체)</span>
+            <span class="stat-label" id="uiStatWordLabel">단어 (찾은것/전체)</span>
             <div>
                 <span class="score-val" id="foundCount">0</span>
                 <span class="score-target" id="totalCount">/ 0</span>
@@ -191,8 +117,7 @@
             <div id="hintTooltip" class="hint-tooltip">눌러서 힌트 보기!</div>
             <div id="hintBar" class="mission-bar hidden">
                 <span class="mission-icon">🎁</span>
-                <span id="hintText">힌트</span>
-                <span id="hintScore" class="mission-score">+50</span>
+                <span id="hintText">힌트</span> <span id="hintScore" class="mission-score">+50</span>
             </div>
             <button id="btnHint" class="hint-btn hidden" onclick="useHint()">
                 💡 힌트 보기
@@ -207,17 +132,17 @@
         <div class="modal">
             <div class="modal-title" id="optTitle">설정</div>
             <div class="option-list" id="optList"></div>
-            <button class="btn-full btn-gray" onclick="closeOptionModal()">닫기</button>
+            <button class="btn-full btn-gray" id="uiCloseOption" onclick="closeOptionModal()">닫기</button>
         </div>
     </div>
 
     <div class="overlay" id="settingsModal">
         <div class="modal">
-            <div class="modal-title">설정</div>
+            <div class="modal-title" id="uiSettingsTitle">설정</div>
             
             <div style="margin: 20px 0;">
                 <div class="setting-item">
-                    <div class="setting-label">📳 진동 효과</div>
+                    <div class="setting-label" id="uiVibration">📳 진동 효과</div>
                     <label class="switch">
                         <input type="checkbox" id="vibrateToggle" checked onchange="toggleVibration(this)">
                         <span class="slider round"></span>
@@ -225,7 +150,7 @@
                 </div>
 
                 <div class="setting-item">
-                    <div class="setting-label">🔊 효과음</div>
+                    <div class="setting-label" id="uiSound">🔊 효과음</div>
                     <label class="switch">
                         <input type="checkbox" id="soundToggle" checked onchange="toggleSound(this)">
                         <span class="slider round"></span>
@@ -239,7 +164,7 @@
                 🚫 광고 제거 (프리미엄)
             </button>
 
-            <button class="btn-full btn-gray" style="margin-top:15px;" onclick="closeSettingsModal()">닫기</button>
+            <button class="btn-full btn-gray" id="uiCloseSettings" style="margin-top:15px;" onclick="closeSettingsModal()">닫기</button>
         </div>
     </div>
 
@@ -258,11 +183,11 @@
             <h2 id="sheetWord">단어</h2>
             <div id="sheetEng" class="sheet-eng-word"></div>
             <div id="sheetEngDesc" class="sheet-eng-desc"></div>
-            <div id="sheetDesc" class="sheet-kor-desc"></div>
-            <a href="#" id="btnNaver" class="btn-full bg-green" target="_blank" style="display:block; text-decoration:none; line-height:24px;">
+            <div id="sheetDesc" class="sheet-desc"></div>
+            <a href="#" id="btnNaver" class="btn-full bg-green" target="_blank" style="display:block; text-decoration:none; line-height:24px; margin-top:10px;">
                 📖 네이버 사전 검색
             </a>
-            <button class="btn-full btn-gray" onclick="closeSheet()">닫기</button>
+            <button class="btn-full btn-gray" id="uiCloseSheet" onclick="closeSheet()">닫기</button>
         </div>
     </div>
 

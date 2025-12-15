@@ -97,6 +97,7 @@ const LEVEL_WORDS = {
         { word: "계란말이", category: "음식", desc: "달걀을 풀어서 얇게 부쳐 만 밥반찬.", eng: "Rolled Omelet", eng_desc: "A rolled egg omelet." },
         { word: "감자튀김", category: "음식", desc: "감자를 기름에 튀긴 간식.", eng: "French Fries", eng_desc: "Fried potatoes." },
         { word: "치즈버거", category: "음식", desc: "패티 위에 치즈를 얹은 햄버거.", eng: "Cheeseburger", eng_desc: "A hamburger topped with cheese." },
+        { word: "스테이크", category: "음식", desc: "두툼한 고기를 구운 요리.", eng: "Steak", eng_desc: "Rice bowl topped with steak." },
 
         // 사물/기타
         { word: "대한민국", category: "국가", desc: "동아시아에 위치한 우리의 조국.", eng: "Republic of Korea", eng_desc: "A country in East Asia." },
@@ -138,7 +139,6 @@ const LEVEL_WORDS = {
         { word: "후라이드치킨", category: "음식", desc: "닭을 기름에 바삭하게 튀긴 요리.", eng: "Fried Chicken", eng_desc: "Crispy deep-fried chicken." },
         { word: "토마토스파게티", category: "음식", desc: "토마토 소스로 맛을 낸 파스타.", eng: "Tomato Spaghetti", eng_desc: "Spaghetti with tomato sauce." },
         { word: "크림스파게티", category: "음식", desc: "하얀 크림 소스로 만든 고소한 파스타.", eng: "Cream Spaghetti", eng_desc: "Spaghetti with white cream sauce." },
-        { word: "스테이크덮밥", category: "음식", desc: "구운 스테이크를 밥 위에 올린 요리.", eng: "Steak Rice Bowl", eng_desc: "Rice bowl topped with steak." },
         { word: "뼈다귀해장국", category: "음식", desc: "돼지 등뼈를 푹 고아 만든 해장국.", eng: "Pork Bone Soup", eng_desc: "Soup made with pork backbone." },
         { word: "페퍼로니피자", category: "음식", desc: "페퍼로니 햄이 올라간 짭짤한 피자.", eng: "Pepperoni Pizza", eng_desc: "Pizza topped with pepperoni." },
         { word: "치즈오븐스파게티", category: "음식", desc: "치즈를 듬뿍 올려 오븐에 구운 스파게티.", eng: "Oven Baked Spaghetti", eng_desc: "Spaghetti baked with cheese." },

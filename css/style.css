@@ -459,19 +459,6 @@ input:disabled + .slider { background-color: #333; cursor: not-allowed; opacity:
 }
 .btn-premium:active { transform: scale(0.98); }
 
-/* 인트로 화면 전체 컨테이너 */
-.intro-screen {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: #1e293b; /* 기본 배경색 */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden; /* 배경이 튀어나가는 것 방지 */
-    z-index: 9999;
-}
-
 /* 콘텐츠(로고, 버튼)를 배경보다 위에 배치 */
 .intro-content {
     position: relative;
@@ -568,3 +555,25 @@ input:disabled + .slider { background-color: #333; cursor: not-allowed; opacity:
 
 /* SVG Path 좌표 맞추기 (보드판 위에서 움직이도록) */
 /* HTML의 svg path d값과 매칭되어야 함 */
+
+/* --- [UI/UX Polish] 영문 가독성 향상 --- */
+
+/* 버튼과 라벨을 대문자로 통일하여 가독성 확보 */
+.btn-new-game, .mode-btn, .stat-label, .btn-premium {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 스탯 라벨은 영문일 때 조금 더 작고 굵게 */
+.stat-label {
+    font-size: 11px; 
+    font-weight: 800;
+    opacity: 0.7;
+}
+
+/* 힌트 툴팁도 강조 */
+.hint-tooltip {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
