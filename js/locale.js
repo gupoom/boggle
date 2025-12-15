@@ -21,8 +21,12 @@ const MESSAGES = {
             levelLabel: "랜덤",
             gridLabel: "4x4",
             wordStats: "단어 (찾은것/전체)",
-            // [추가] 사전 검색 버튼
-            naverSearch: "📖 네이버 사전 검색"
+            // [수정] 여기에 콤마(,)를 추가했습니다.
+            naverSearch: "📖 네이버 사전 검색", 
+            sourceTitle: "자료 출처",
+            sourceDesc: "단어 사전은 국립국어원의 [우리말샘] 사전을 기초로 하였고, 단어의 영문 번역은 [한국어기초사전]의 영어 번역어를 기초로 제작하였습니다.",
+            linkUrimalsaem: "우리말샘",
+            linkBasicDict: "한국어기초사전"
         },
         game: {
             start: "시작",
@@ -53,8 +57,8 @@ const MESSAGES = {
                 "가수": "가수", "관광지": "관광지", "음식": "음식", "동물": "동물",
                 "자연": "자연", "식물": "식물", "탈것": "탈것", "가전": "가전",
                 "악기": "악기", "장소": "장소", "예능": "예능", "국가": "국가",
-                "사자성어": "Idiom", "드라마": "Drama", "사회": "Society", "신조어": "Slang",
-                "기본": "Basic"
+                "사자성어": "사자성어", "드라마": "드라마", "사회": "사회", "신조어": "신조어",
+                "기본": "기본"
             }
         }
     },
@@ -73,8 +77,13 @@ const MESSAGES = {
             close: "Close",
             levelLabel: "Random",
             gridLabel: "4x4",
-            wordStats: "Found", // 짧고 명확하게!
-            naverSearch: "📖 Open Dictionary" // Naver 몰라도 이해 가능하게
+            wordStats: "Found",
+            // [수정] 여기에 콤마(,)를 추가했습니다.
+            naverSearch: "📖 Open Dictionary",
+            sourceTitle: "Data Sources",
+            sourceDesc: "The dictionary is based on 'Urimalsaem' (NIKL), and English translations are derived from the 'Korean Basic Dictionary'.",
+            linkUrimalsaem: "Urimalsaem",
+            linkBasicDict: "Korean Basic Dictionary"
         },
         game: {
             start: "START",
@@ -146,4 +155,11 @@ export function initLocaleUI() {
     // [추가] 단어 뜻 시트 (네이버 버튼, 닫기 버튼)
     set('btnNaver', UI_TEXTS.naverSearch);
     set('uiCloseSheet', UI_TEXTS.close);
+
+    // [추가] 출처 텍스트 적용
+    set('uiSourceTitle', UI_TEXTS.sourceTitle);
+    set('uiSourceDesc', UI_TEXTS.sourceDesc);
+    set('uiLinkUrimalsaem', UI_TEXTS.linkUrimalsaem);
+    set('uiLinkBasicDict', UI_TEXTS.linkBasicDict);
 }
+// [수정] 맨 마지막에 있던 불필요한 '}'를 제거했습니다.

@@ -2,7 +2,7 @@
 // 난이도 재정립: 1단계(3글자), 2단계(4글자), 3단계(5글자 이상 통합)
 // 모든 단어에 뜻풀이(desc)와 영어(eng, eng_desc) 정보를 추가했습니다.
 
-const LEVEL_WORDS = {
+window.LEVEL_WORDS = {
     // [Level 1] 초급 (3글자)
     "1": [
         // 가수
@@ -35,6 +35,9 @@ const LEVEL_WORDS = {
         { word: "광안리", category: "관광지", desc: "광안대교 야경이 아름다운 부산의 해변.", eng: "Gwangalli", eng_desc: "A beach in Busan famous for the night view of the bridge." },
         { word: "다자이", category: "관광지", desc: "일본 후쿠오카현의 유명한 신사 관광지.", eng: "Dazaifu", eng_desc: "A famous shrine and tourist spot in Fukuoka, Japan." },
         { word: "동대문", category: "관광지", desc: "쇼핑몰과 패션의 중심지인 서울의 명소.", eng: "Dongdaemun", eng_desc: "A major shopping and fashion district in Seoul." },
+        { word: "광화문", category: "관광지", desc: "경복궁의 정문이자 서울의 상징적인 장소.", eng: "Gwanghwamun", eng_desc: "The main gate of Gyeongbokgung Palace." },
+        { word: "대학교", category: "장소", desc: "고등 교육을 실시하는 교육 기관.", eng: "University", eng_desc: "An institution of higher education." },
+        { word: "백화점", category: "장소", desc: "여러 가지 물건을 파는 대규모 상점.", eng: "Department Store", eng_desc: "A large retail store." },
 
         // 음식
         { word: "떡볶이", category: "음식", desc: "떡과 어묵을 매콤한 양념에 볶은 요리.", eng: "Tteokbokki", eng_desc: "Spicy stir-fried rice cakes." },
@@ -65,7 +68,8 @@ const LEVEL_WORDS = {
         { word: "휴대폰", category: "가전", desc: "들고 다니며 통화할 수 있는 전화기.", eng: "Mobile Phone", eng_desc: "A portable telephone." },
         { word: "피아노", category: "악기", desc: "건반을 눌러 소리를 내는 악기.", eng: "Piano", eng_desc: "A large keyboard musical instrument." },
         { word: "아파트", category: "장소", desc: "여러 층으로 지어진 공동 주택.", eng: "Apartment", eng_desc: "A suite of rooms forming one residence." },
-        { word: "런닝맨", category: "예능", desc: "오래 사랑받고 있는 장수 예능 프로그램.", eng: "Running Man", eng_desc: "A long-running South Korean variety show." }
+        { word: "런닝맨", category: "예능", desc: "오래 사랑받고 있는 장수 예능 프로그램.", eng: "Running Man", eng_desc: "A long-running South Korean variety show." },
+        { word: "노트북", category: "가전", desc: "휴대할 수 있는 개인용 컴퓨터.", eng: "Laptop", eng_desc: "A portable personal computer." },
     ],
 
     // [Level 2] 중급 (4글자)
@@ -85,8 +89,6 @@ const LEVEL_WORDS = {
         { word: "에버랜드", category: "관광지", desc: "대한민국 최대 규모의 테마파크.", eng: "Everland", eng_desc: "South Korea's largest theme park." },
         { word: "롯데월드", category: "관광지", desc: "서울 잠실에 있는 대형 놀이공원.", eng: "Lotte World", eng_desc: "A major recreation complex in Seoul." },
         { word: "남산타워", category: "관광지", desc: "서울의 랜드마크이자 야경 명소.", eng: "Namsan Tower", eng_desc: "A landmark tower in Seoul offering panoramic views." },
-        { word: "광화문", category: "관광지", desc: "경복궁의 정문이자 서울의 상징적인 장소.", eng: "Gwanghwamun", eng_desc: "The main gate of Gyeongbokgung Palace." },
-        { word: "독립기념관", category: "관광지", desc: "독립운동의 역사를 기리는 기념관.", eng: "Independence Hall", eng_desc: "A museum dedicated to the Korean independence movement." },
         { word: "롯데타워", category: "관광지", desc: "대한민국에서 가장 높은 초고층 빌딩.", eng: "Lotte World Tower", eng_desc: "The tallest skyscraper in South Korea." },
         { word: "한옥마을", category: "관광지", desc: "전통 한옥이 모여 있는 관광지.", eng: "Hanok Village", eng_desc: "A village of traditional Korean houses." },
 
@@ -102,18 +104,14 @@ const LEVEL_WORDS = {
         // 사물/기타
         { word: "대한민국", category: "국가", desc: "동아시아에 위치한 우리의 조국.", eng: "Republic of Korea", eng_desc: "A country in East Asia." },
         { word: "고등학교", category: "장소", desc: "중학교를 졸업하고 진학하는 학교.", eng: "High School", eng_desc: "A secondary school." },
-        { word: "대학교", category: "장소", desc: "고등 교육을 실시하는 교육 기관.", eng: "University", eng_desc: "An institution of higher education." },
-        { word: "백화점", category: "장소", desc: "여러 가지 물건을 파는 대규모 상점.", eng: "Department Store", eng_desc: "A large retail store." },
         { word: "스마트폰", category: "가전", desc: "컴퓨터 기능이 있는 휴대전화.", eng: "Smartphone", eng_desc: "A mobile phone that performs many computer functions." },
-        { word: "노트북", category: "가전", desc: "휴대할 수 있는 개인용 컴퓨터.", eng: "Laptop", eng_desc: "A portable personal computer." },
-        { word: "공기청정기", category: "가전", desc: "실내 공기를 깨끗하게 해주는 기계.", eng: "Air Purifier", eng_desc: "A device that cleans the air." },
         { word: "무한도전", category: "예능", desc: "대한민국 리얼 버라이어티의 시초.", eng: "Infinite Challenge", eng_desc: "A legendary Korean variety show." },
         { word: "일석이조", category: "사자성어", desc: "돌 한 개로 새 두 마리를 잡는다는 뜻.", eng: "Killing two birds with one stone", eng_desc: "Solving two problems with one action." },
         { word: "동문서답", category: "사자성어", desc: "묻는 말에 대하여 엉뚱한 대답을 함.", eng: "Irrelevant answer", eng_desc: "Giving an answer that is unrelated to the question." },
         { word: "작심삼일", category: "사자성어", desc: "결심이 사흘을 가지 못함.", eng: "Giving up easily", eng_desc: "A resolution that lasts only three days." },
         { word: "대기만성", category: "사자성어", desc: "큰 그릇은 늦게 이루어진다는 뜻.", eng: "Late bloomer", eng_desc: "Great talents mature late." },
         { word: "유비무환", category: "사자성어", desc: "미리 준비하면 걱정이 없음.", eng: "Better safe than sorry", eng_desc: "Preparation prevents future worries." },
-        { word: "권선징악", category: "사자성어", desc: "착한 일을 권하고 악한 일을 벌함.", eng: "Poetic justice", eng_desc: "Promoting good and punishing evil." }
+        { word: "권선징악", category: "사자성어", desc: "착한 일을 권하고 악한 일을 벌함.", eng: "Poetic justice", eng_desc: "Promoting good and punishing evil." },
         { word: "해바라기", category: "식물", desc: "해를 향해 자라는 노란 꽃.", eng: "Sunflower", eng_desc: "A tall plant with large yellow flowers." },
     ],
 
@@ -155,7 +153,9 @@ const LEVEL_WORDS = {
         { word: "나혼자산다", category: "예능", desc: "1인 가구 연예인들의 일상을 보여주는 프로그램.", eng: "I Live Alone", eng_desc: "A reality show featuring celebrities living alone." },
         { word: "전지적참견시점", category: "예능", desc: "매니저들의 제보로 스타의 일상을 관찰하는 예능.", eng: "Omniscient Interfering View", eng_desc: "A show observing stars through their managers." },
         { word: "놀면뭐하니", category: "예능", desc: "유재석이 다양한 부캐로 활동하는 예능.", eng: "Hangout with Yoo", eng_desc: "A variety show featuring Yoo Jae-suk." },
-        { word: "사회적거리두기", category: "사회", desc: "감염병 예방을 위해 사람들 간 거리를 유지하는 것.", eng: "Social Distancing", eng_desc: "Keeping distance to prevent infection." }
+        { word: "사회적거리두기", category: "사회", desc: "감염병 예방을 위해 사람들 간 거리를 유지하는 것.", eng: "Social Distancing", eng_desc: "Keeping distance to prevent infection." },
+        { word: "독립기념관", category: "관광지", desc: "독립운동의 역사를 기리는 기념관.", eng: "Independence Hall", eng_desc: "A museum dedicated to the Korean independence movement." },
+        { word: "공기청정기", category: "가전", desc: "실내 공기를 깨끗하게 해주는 기계.", eng: "Air Purifier", eng_desc: "A device that cleans the air." },
     ],
 
     // [Special] 신조어/밈
@@ -181,6 +181,6 @@ const LEVEL_WORDS = {
         { word: "너튜브", category: "신조어", desc: "유튜브를 돌려 말하는 표현.", eng: "YouTube", eng_desc: "A slang term for YouTube." },
         { word: "뇌피셜", category: "신조어", desc: "객관적 근거 없는 자신만의 생각.", eng: "Unverified opinion", eng_desc: "One's own idea without facts." },
         { word: "중꺾마", category: "신조어", desc: "중요한 건 꺾이지 않는 마음.", eng: "Unbreakable spirit", eng_desc: "The important thing is an unbreakable heart." },
-        { word: "분조장", category: "신조어", desc: "분노 조절 장애.", eng: "Anger issues", eng_desc: "Difficulty controlling anger." }
+        { word: "분조장", category: "신조어", desc: "분노 조절 장애.", eng: "Anger issues", eng_desc: "Difficulty controlling anger." },
     ]
 };

@@ -629,3 +629,49 @@ input:disabled + .slider { background-color: #333; cursor: not-allowed; opacity:
     font-size: 11px;
     letter-spacing: 0.5px;
 }
+
+/* [추가] 설정 화면 내 자료 출처 스타일 */
+.source-info-area {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.source-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #94a3b8;
+    margin-bottom: 5px;
+}
+
+.source-desc {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+    margin: 0 0 10px 0;
+    word-break: keep-all; /* 한글 단어 끊김 방지 */
+}
+
+.source-links {
+    font-size: 11px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
+}
+
+.source-links a {
+    color: #818cf8; /* 링크색 (연한 보라/파랑) */
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.source-links a:hover {
+    color: #a5b4fc;
+    text-decoration: underline;
+}
+
+.divider-vertical {
+    color: #475569;
+    font-size: 10px;
+}

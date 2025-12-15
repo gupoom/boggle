@@ -27,6 +27,9 @@ let hiddenWordPath = [];
 let currentHintStep = 0;
 let lastActionTime = Date.now();
 
+// [추가] 미리 계산된 게임 데이터를 저장할 변수
+let precomputedData = null;
+
 // 설정 변수
 let isVibrationOn = true;
 
@@ -178,6 +181,9 @@ function runCountdownSequence() {
     countdownOverlay.classList.add('active');
     triggerHaptic('tap'); 
 
+    // [추가] 카운트다운 시작과 동시에 데이터 생성 시작!
+    prepareGameInBackground();
+    
     let count = 3;
     updateCount(count);
 
@@ -221,8 +227,8 @@ function initLevelDictionary() {
     // [추가] 언어 설정에 따라 UI 텍스트 초기화
     initLocaleUI();
 
-    if (typeof LEVEL_WORDS !== 'undefined') {
-        Object.values(LEVEL_WORDS).forEach(wordList => {
+    if (typeof window.LEVEL_WORDS !== 'undefined') {
+        Object.values(window.LEVEL_WORDS).forEach(wordList => {
             if (Array.isArray(wordList)) {
                 wordList.forEach(item => {
                     const word = (typeof item === 'string') ? item : item.word;
@@ -251,6 +257,45 @@ function initLevelDictionary() {
 }
 initLevelDictionary();
 
+// [추가] 카운트다운 동안 게임 데이터를 미리 만듭니다.
+function prepareGameInBackground() {
+    // 1. 후보 단어 선정
+    let candidateWords = [];
+    if (typeof window.LEVEL_WORDS !== 'undefined') {
+        if (currentLevel === 'all') {
+            Object.values(window.LEVEL_WORDS).forEach(list => {
+                if(Array.isArray(list)) candidateWords = candidateWords.concat(list);
+            });
+        } else {
+            if (window.LEVEL_WORDS[currentLevel]) candidateWords = window.LEVEL_WORDS[currentLevel];
+        }
+    }
+    
+    // [수정] 비상시 '사과' (사용자가 수정한 내용 반영)
+    if (candidateWords.length === 0) candidateWords = [{word: "사과", category: "음식"}];
+
+    // 2. 히든 단어 선택
+    const hiddenData = candidateWords[Math.floor(Math.random() * candidateWords.length)];
+    const hiddenWord = (typeof hiddenData === 'string') ? hiddenData : hiddenData.word;
+    const category = (typeof hiddenData === 'string') ? '' : hiddenData.category;
+    
+    // 3. 보드 생성 (이게 가장 오래 걸림)
+    const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize);
+    
+    // 4. 정답 미리 찾기 (이것도 오래 걸림)
+    const possibleWordsMap = solveBoard(gameData.grid, currentGridSize);
+
+    // 5. 결과 저장
+    precomputedData = {
+        grid: gameData.grid,
+        path: gameData.path,
+        hiddenWord: hiddenWord,
+        category: category,
+        possibleWords: possibleWordsMap
+    };
+    
+    console.log("[System] 게임 데이터 백그라운드 생성 완료");
+}
 
 // --- [기능 5] 게임 로직 (보드, 타이머) ---
 
@@ -290,43 +335,62 @@ function initGame() {
         timerElement.style.color = "#f59e0b"; 
     }
     
-    let candidateWords = [];
-    if (typeof LEVEL_WORDS !== 'undefined') {
-        if (currentLevel === 'all') {
-            Object.values(LEVEL_WORDS).forEach(list => {
-                if(Array.isArray(list)) candidateWords = candidateWords.concat(list);
-            });
-        } else {
-            if (LEVEL_WORDS[currentLevel]) candidateWords = LEVEL_WORDS[currentLevel];
+    // ============================================================
+    // [수정] 미리 계산된 데이터(precomputedData)가 있는지 확인
+    // ============================================================
+    let category = "";
+
+    if (precomputedData) {
+        // 1. 미리 계산된 데이터 사용 (딜레이 없음!)
+        gridData = precomputedData.grid;
+        hiddenWordPath = precomputedData.path;
+        currentHiddenWord = precomputedData.hiddenWord;
+        possibleWords = precomputedData.possibleWords;
+        category = precomputedData.category;
+        
+        // 사용 후 초기화
+        precomputedData = null; 
+        console.log(`[FastLoad] 미리 계산된 데이터 사용: ${currentHiddenWord}`);
+    } 
+    else {
+        // 2. 데이터가 없으면 직접 계산 (기존 로직 - 폴백)
+        // (새 게임 버튼을 광클하거나, 카운트다운 없이 시작할 경우를 대비)
+        let candidateWords = [];
+        if (typeof window.LEVEL_WORDS !== 'undefined') {
+            if (currentLevel === 'all') {
+                Object.values(window.LEVEL_WORDS).forEach(list => {
+                    if(Array.isArray(list)) candidateWords = candidateWords.concat(list);
+                });
+            } else {
+                if (window.LEVEL_WORDS[currentLevel]) candidateWords = window.LEVEL_WORDS[currentLevel];
+            }
         }
+        if (candidateWords.length === 0) candidateWords = [{word: "사과", category: "음식"}]; 
+
+        const hiddenData = candidateWords[Math.floor(Math.random() * candidateWords.length)];
+        const hiddenWord = (typeof hiddenData === 'string') ? hiddenData : hiddenData.word;
+        category = (typeof hiddenData === 'string') ? '' : hiddenData.category;
+
+        currentHiddenWord = hiddenWord;
+        
+        const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize);
+        gridData = gameData.grid;
+        hiddenWordPath = gameData.path; 
+        possibleWords = solveBoard(gridData, currentGridSize);
     }
-    if (candidateWords.length === 0) candidateWords = [{word: "비상구", category: "기본"}]; 
-
-    const hiddenData = candidateWords[Math.floor(Math.random() * candidateWords.length)];
-    const hiddenWord = (typeof hiddenData === 'string') ? hiddenData : hiddenData.word;
-    const category = (typeof hiddenData === 'string') ? '' : hiddenData.category;
-
-    currentHiddenWord = hiddenWord;
-    console.log(`[${currentMode}/${currentGridSize}x${currentGridSize}] 히든: ${hiddenWord}`);
+    
+    // --- 공통 UI 처리 (힌트 텍스트 등) ---
+    console.log(`[${currentMode}/${currentGridSize}x${currentGridSize}] 히든: ${currentHiddenWord}`);
 
     if (category) {
-        // [수정] 카테고리 이름을 번역해서 보여줍니다.
-        // T.categories에 해당 한글 카테고리가 있으면 영어로, 없으면 그대로 보여줍니다.
         const translatedCategory = T.categories[category] || category;
-        
         hintText.textContent = `${T.hintHidden}${translatedCategory}`;
-        
         hintScore.textContent = `+${GAME_CONFIG.HIDDEN_BONUS_SCORE}`;
         hintBar.classList.remove('hidden');
         hintTooltip.classList.add('show');
         setTimeout(() => { hintTooltip.classList.remove('show'); }, 3000);
     }
 
-    const gameData = WordBoard.generateBoard(hiddenWord || "비상구", currentGridSize);
-    gridData = gameData.grid;
-    hiddenWordPath = gameData.path; 
-    
-    possibleWords = solveBoard(gridData, currentGridSize);
     totalWordCount = possibleWords.size;
     if(foundCountEl) foundCountEl.textContent = "0";
     if(totalCountEl) totalCountEl.textContent = `/ ${totalWordCount}`;
@@ -336,9 +400,7 @@ function initGame() {
     gridElement.innerHTML = '';
     wordListElement.innerHTML = '';
     
-    // [수정] 다국어 변수 사용
     wordDisplay.textContent = T.start;
-    
     wordDisplay.classList.remove('anim-success', 'anim-fail', 'shake');
 
     const totalTiles = currentGridSize * currentGridSize;
