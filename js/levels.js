@@ -91,6 +91,7 @@ window.LEVEL_WORDS = {
         { word: "남산타워", category: "관광지", desc: "서울의 랜드마크이자 야경 명소.", eng: "Namsan Tower", eng_desc: "A landmark tower in Seoul offering panoramic views." },
         { word: "롯데타워", category: "관광지", desc: "대한민국에서 가장 높은 초고층 빌딩.", eng: "Lotte World Tower", eng_desc: "The tallest skyscraper in South Korea." },
         { word: "한옥마을", category: "관광지", desc: "전통 한옥이 모여 있는 관광지.", eng: "Hanok Village", eng_desc: "A village of traditional Korean houses." },
+        { word: "가로수길", category: "관광지", eng: "Garosu-gil" },
 
         // 음식
         { word: "김치찌개", category: "음식", desc: "김치를 주재료로 하여 끓인 찌개.", eng: "Kimchi-jjigae", eng_desc: "Kimchi stew." },

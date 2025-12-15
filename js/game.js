@@ -730,6 +730,12 @@ window.openOptionModal = function(type) {
 window.closeOptionModal = function() {
     triggerHaptic('tap');
     optionModal.classList.remove('active');
+
+    // [추가] 설정을 바꾸고 나가는 순간, 다음 판을 미리 구워둡니다!
+    // 유저는 메뉴가 닫히는 애니메이션을 보는 동안 계산이 끝납니다.
+    setTimeout(() => {
+        prepareGameInBackground(); 
+    }, 100);
 }
 
 let toastTimer = null;
@@ -848,6 +854,10 @@ function gameOver(isSuccess) {
     } else {
         showResultModal("⏰", T.failTitle, `${T.failDesc}${currentScore}`, false);
     }
+    // [추가] 결과창이 떴을 때, 다음 게임을 미리 준비합니다.
+    setTimeout(() => {
+        prepareGameInBackground();
+    }, 500);
 }
 
 function showResultModal(iconText, titleText, descText, isSuccess) {
@@ -912,3 +922,6 @@ function solveBoard(grid, size) {
 window.initGame = initGame;
 window.closeSheet = closeSheet;
 window.startGame = startGame;
+
+// [추가] 앱 실행 시 첫 번째 게임 데이터를 미리 만들어둡니다.
+setTimeout(prepareGameInBackground, 500);
