@@ -26,7 +26,8 @@ const MESSAGES = {
             sourceTitle: "자료 출처",
             sourceDesc: "단어 사전은 국립국어원의 [우리말샘] 사전을 기초로 하였고, 단어의 영문 번역은 [한국어기초사전]의 영어 번역어를 기초로 제작하였습니다.",
             linkUrimalsaem: "우리말샘",
-            linkBasicDict: "한국어기초사전"
+            linkBasicDict: "한국어기초사전",
+            exitConfirm: "게임을 종료하시겠습니까?"
         },
         game: {
             start: "시작",
@@ -67,7 +68,7 @@ const MESSAGES = {
             newGame: "↻ New Game",
             practice: "Practice",
             challenge: "Challenge",
-            hintBtn: "💡 Get Hint",
+            hintBtn: "💡 Hint",
             hintTooltip: "Tap for Hint!",
             hintTitle: "Hint",
             settingsTitle: "Settings",
@@ -83,13 +84,14 @@ const MESSAGES = {
             sourceTitle: "Data Sources",
             sourceDesc: "The dictionary is based on 'Urimalsaem' (NIKL), and English translations are derived from the 'Korean Basic Dictionary'.",
             linkUrimalsaem: "Urimalsaem",
-            linkBasicDict: "Korean Basic Dictionary"
+            linkBasicDict: "Korean Basic Dictionary",
+            exitConfirm: "Do you want to exit the game?"
         },
         game: {
             start: "START",
             hintHidden: "Find! ",
-            hintFound: "Hidden Word Found!",
-            alreadyFound: "Found already!",
+            hintFound: "Bonus!",
+            alreadyFound: "Used!",
             tooShort: "3+ letters required",
             noWords: "No more words to find!",
             successTitle: "Success!",
@@ -123,7 +125,7 @@ const MESSAGES = {
 
 // 3. 내보내기
 export const T = MESSAGES[userLang].game; 
-const UI_TEXTS = MESSAGES[userLang].ui;   
+export const UI_TEXTS = MESSAGES[userLang].ui;   
 
 // 4. UI 텍스트 적용 함수
 export function initLocaleUI() {

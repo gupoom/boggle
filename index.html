@@ -15,10 +15,7 @@
     <title>HAN-GL MOA</title>
     
     <link rel="stylesheet" href="css/style.css">
-    
-    <script src="js/confetti.js"></script>
-    <script src="js/levels.js"></script>
-    <script src="js/dictionary.js"></script>
+
 </head>
 <body>
 
@@ -194,14 +191,15 @@
             <div id="sheetEng" class="sheet-eng-word"></div>
             <div id="sheetEngDesc" class="sheet-eng-desc"></div>
             <div id="sheetDesc" class="sheet-desc"></div>
-            <a href="#" id="btnNaver" class="btn-full bg-green" target="_blank" style="display:block; text-decoration:none; line-height:24px; margin-top:10px;">
+            <button id="btnNaver" class="btn-full bg-green" style="margin-top:10px;">
                 📖 네이버 사전 검색
-            </a>
+            </button>
             <button class="btn-full btn-gray" id="uiCloseSheet" onclick="closeSheet()">닫기</button>
         </div>
     </div>
+    
+    <canvas id="confetti-canvas"></canvas>
 
-    <script src="js/ads.js"></script> 
     <script type="module" src="js/game.js"></script>
     
 </body>

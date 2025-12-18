@@ -2,7 +2,28 @@ import { WordBoard } from './board.js';
 import { assembleHangul } from './rules.js';
 import { GAME_CONFIG } from './config.js';
 // [추가] 다국어 지원 모듈 가져오기
-import { T, initLocaleUI } from './locale.js';
+import { T, UI_TEXTS, initLocaleUI } from './locale.js';
+// 사전 가져오기
+import { LEVEL_WORDS } from './levels.js';
+import { GAME_DICTIONARY } from './dictionary.js';
+
+import './ads.js';
+import './confetti.js';
+
+// ▼▼▼ [추가] 진동과 앱 제어 플러그인 가져오기
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { App } from '@capacitor/app';
+
+// 1. 상태바 (공식)
+import { StatusBar } from '@capacitor/status-bar';
+
+// 2. 하단바 (Capgo 버전)
+import { NavigationBar } from '@capgo/capacitor-navigation-bar';
+
+import { Capacitor } from '@capacitor/core';
+
+// ▼ [추가] 인앱 브라우저 도구 가져오기
+import { Browser } from '@capacitor/browser';
 
 // --- 전역 변수 ---
 let gridData = [];
@@ -32,6 +53,22 @@ let precomputedData = null;
 
 // 설정 변수
 let isVibrationOn = true;
+
+// [파티클 설정] 전용 캔버스 가져오기
+let confettiInstance = null; // 파티클 기계
+
+// 게임 초기화나 로드 시점에 파티클 기계를 조립합니다.
+setTimeout(() => {
+    const canvasEl = document.getElementById('confetti-canvas');
+    // window.confetti가 있고, .create 기능(고급 기능)을 지원하면
+    if (canvasEl && window.confetti && window.confetti.create) {
+        confettiInstance = window.confetti.create(canvasEl, {
+            resize: true,      // 화면 크기 변경 대응
+            useWorker: false   // [중요] 앱에서는 false로 해야 멈추지 않습니다!
+        });
+        console.log("[System] 파티클 시스템 초기화 완료 (Main Thread)");
+    }
+}, 500);
 
 // 사전 데이터 저장소
 const COMBINED_DICTIONARY = new Set(); 
@@ -74,60 +111,108 @@ if (targetScoreElement) {
 document.getElementById('hintBar').addEventListener('click', showHint);
 
 
-// --- [기능 1] 효과음 관리자 ---
+// --- [기능 1] 효과음 관리자 (화음/멜로디 업그레이드 버전) ---
 const SoundManager = {
     ctx: null,
     isMuted: false, 
 
     init: function() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
-        }
+        if (this.ctx) return;
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+
+            // 모바일 엔진 예열 (빈 소리 재생)
+            const buffer = this.ctx.createBuffer(1, 1, 22050);
+            const source = this.ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.ctx.destination);
+            source.start(0);
+
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        } catch (e) { console.error(e); }
     },
 
+    // 1. 타일 선택 (가벼운 나무토막 소리)
     playTap: function() {
-        if (this.isMuted || !this.ctx) return;
-        this.playTone(800, 'sine', 0.1); 
+        if (this.isMuted) return;
+        // 짧고 경쾌한 고음 (Pop!)
+        this.playTone(800, 'sine', 0.05, 0.3); 
     },
 
+    // 2. 단어 성공 (경쾌한 3화음: 도-미-솔)
     playSuccess: function() {
-        if (this.isMuted || !this.ctx) return;
-        this.playTone(523.25, 'sine', 0.2); 
-        setTimeout(() => this.playTone(659.25, 'sine', 0.3), 100); 
+        if (this.isMuted) return;
+        const now = this.ctx.currentTime;
+        // C Major Chord (도, 미, 솔)
+        this.playTone(523.25, 'sine', 0.3, 0.3, 0);      // 도 (C5)
+        this.playTone(659.25, 'sine', 0.3, 0.3, 0.05);   // 미 (E5)
+        this.playTone(783.99, 'sine', 0.3, 0.3, 0.1);    // 솔 (G5)
     },
 
+    // 3. 실패/이미 찾음 (낮은음 불협화음)
     playFail: function() {
-        if (this.isMuted || !this.ctx) return;
-        this.playTone(150, 'sawtooth', 0.3); 
+        if (this.isMuted) return;
+        // 띠-이-잉 (내려가는 소리)
+        this.playTone(150, 'sawtooth', 0.2, 0.2, 0);
+        this.playTone(140, 'sawtooth', 0.2, 0.2, 0.1);
     },
 
+    // 4. 히든 단어 발견 (화려한 아르페지오: 띠로리링!)
     playBonus: function() {
-        if (this.isMuted || !this.ctx) return;
-        this.playTone(523.25, 'sine', 0.1);
-        setTimeout(() => this.playTone(659.25, 'sine', 0.1), 80);
-        setTimeout(() => this.playTone(783.99, 'sine', 0.2), 160);
-        setTimeout(() => this.playTone(1046.50, 'sine', 0.4), 240);
+        if (this.isMuted) return;
+        // 빠르게 올라가는 멜로디
+        this.playTone(523.25, 'sine', 0.1, 0.3, 0);    // 도
+        this.playTone(659.25, 'sine', 0.1, 0.3, 0.08); // 미
+        this.playTone(783.99, 'sine', 0.1, 0.3, 0.16); // 솔
+        this.playTone(1046.50, 'sine', 0.4, 0.3, 0.24); // 높은 도! (길게)
     },
 
-    playTone: function(freq, type, duration) {
+    // 5. [신규] 게임 클리어/퍼펙트 (팡파레)
+    playFanfare: function() {
+        if (this.isMuted) return;
+        // 빰! 빰! 빠밤~!
+        const vol = 0.4;
+        this.playTone(523.25, 'square', 0.2, vol, 0);    // 도
+        this.playTone(523.25, 'square', 0.2, vol, 0.2);  // 도
+        this.playTone(523.25, 'square', 0.2, vol, 0.4);  // 도
+        this.playTone(783.99, 'square', 0.6, vol, 0.6);  // 솔~~ (길게)
+        
+        // 화음 깔아주기
+        this.playTone(523.25, 'sine', 0.8, 0.3, 0.6); // 베이스
+        this.playTone(659.25, 'sine', 0.8, 0.3, 0.6); // 화음
+    },
+
+    // 기본 소리 재생 함수 (업그레이드됨)
+    playTone: function(freq, type, duration, volume = 0.5, delay = 0) {
+        if (!this.ctx) this.init();
+        if (!this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
         try {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
+            
             osc.type = type; 
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+            
+            // 볼륨 엔벨로프 (부드럽게 시작해서 사라지게)
+            // 틱! 소리 방지를 위해 약간의 attack과 release를 줍니다.
+            const startTime = this.ctx.currentTime + delay;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(volume, startTime + 0.02); // Attack
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration); // Decay
+            
             osc.connect(gain);
             gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + duration);
-        } catch(e) { console.log(e); }
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.1); // 잔향 시간 고려
+        } catch(e) { }
     }
 };
-
 
 // --- [기능 2] 시스템 설정 및 유틸리티 ---
 
@@ -144,12 +229,23 @@ window.toggleSound = function(checkbox) {
     }
 }
 
-function triggerHaptic(type) {
+// 진동 발생 함수 (Capacitor 버전)
+async function triggerHaptic(type) {
     if (!isVibrationOn) return;
-    if (window.navigator && window.navigator.vibrate) {
-        if (type === 'tap') window.navigator.vibrate(40); 
-        else if (type === 'success') window.navigator.vibrate([50, 50, 50]); 
-        else if (type === 'fail') window.navigator.vibrate(300); 
+
+    // [추가] 웹(PC)이면 진동 실행 안 함
+    if (!Capacitor.isNativePlatform()) return;
+
+    try {
+        if (type === 'tap') {
+            await Haptics.impact({ style: ImpactStyle.Light }); // 가벼운 톡!
+        } else if (type === 'success') {
+            await Haptics.notification({ type: NotificationType.Success }); // 웅~ (성공)
+        } else if (type === 'fail') {
+            await Haptics.notification({ type: NotificationType.Error }); // 드드득 (실패)
+        }
+    } catch (e) {
+        console.log("진동 지원 안 함");
     }
 }
 
@@ -169,12 +265,39 @@ window.useHint = function() {
 
 // --- [기능 3] 게임 시작 및 제어 로직 ---
 
+// 몰입 모드(풀스크린) 설정 함수
+async function setImmersiveMode() {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+        // 상단바(시계) 숨기기
+        await StatusBar.hide(); 
+        // 하단바(소프트키) 숨기기
+        await NavigationBar.hide(); 
+    } catch (e) {
+        console.log("풀스크린 설정 실패(웹 등):", e);
+    }
+}
+
 window.startFromIntro = function() {
     introScreen.classList.add('hidden');
     SoundManager.init();
     triggerHaptic('tap');
+
+    // 1. 풀스크린 적용
+    setImmersiveMode();
+
+    // 2. 배너 광고 띄우기 (있으면)
+    if (typeof AdManager !== 'undefined') {
+        AdManager.showBanner();
+    }
+
     initGame();
 };
+
+// [추가] 앱이 백그라운드 갔다가 돌아오면 풀스크린 풀리는 것 방지
+App.addListener('resume', () => {
+    setTimeout(setImmersiveMode, 500);
+});
 
 function runCountdownSequence() {
     resultModal.classList.remove('active');
@@ -183,7 +306,7 @@ function runCountdownSequence() {
 
     // [추가] 카운트다운 시작과 동시에 데이터 생성 시작!
     prepareGameInBackground();
-    
+
     let count = 3;
     updateCount(count);
 
@@ -227,8 +350,8 @@ function initLevelDictionary() {
     // [추가] 언어 설정에 따라 UI 텍스트 초기화
     initLocaleUI();
 
-    if (typeof window.LEVEL_WORDS !== 'undefined') {
-        Object.values(window.LEVEL_WORDS).forEach(wordList => {
+    if (typeof LEVEL_WORDS !== 'undefined') {
+        Object.values(LEVEL_WORDS).forEach(wordList => {
             if (Array.isArray(wordList)) {
                 wordList.forEach(item => {
                     const word = (typeof item === 'string') ? item : item.word;
@@ -236,7 +359,7 @@ function initLevelDictionary() {
                     COMBINED_DICTIONARY.add(word); 
 
                     if (typeof item !== 'string') {
-                        const englishMeaning = item.eng_desc || item.eng || "";
+                        const englishMeaning = item.eng || item.eng_desc || "";
                         if (englishMeaning) {
                             WORD_DETAILS[word] = englishMeaning;
                         }
@@ -261,13 +384,13 @@ initLevelDictionary();
 function prepareGameInBackground() {
     // 1. 후보 단어 선정
     let candidateWords = [];
-    if (typeof window.LEVEL_WORDS !== 'undefined') {
+    if (typeof LEVEL_WORDS !== 'undefined') {
         if (currentLevel === 'all') {
-            Object.values(window.LEVEL_WORDS).forEach(list => {
+            Object.values(LEVEL_WORDS).forEach(list => {
                 if(Array.isArray(list)) candidateWords = candidateWords.concat(list);
             });
         } else {
-            if (window.LEVEL_WORDS[currentLevel]) candidateWords = window.LEVEL_WORDS[currentLevel];
+            if (LEVEL_WORDS[currentLevel]) candidateWords = LEVEL_WORDS[currentLevel];
         }
     }
     
@@ -356,13 +479,13 @@ function initGame() {
         // 2. 데이터가 없으면 직접 계산 (기존 로직 - 폴백)
         // (새 게임 버튼을 광클하거나, 카운트다운 없이 시작할 경우를 대비)
         let candidateWords = [];
-        if (typeof window.LEVEL_WORDS !== 'undefined') {
+        if (typeof LEVEL_WORDS !== 'undefined') {
             if (currentLevel === 'all') {
-                Object.values(window.LEVEL_WORDS).forEach(list => {
+                Object.values(LEVEL_WORDS).forEach(list => {
                     if(Array.isArray(list)) candidateWords = candidateWords.concat(list);
                 });
             } else {
-                if (window.LEVEL_WORDS[currentLevel]) candidateWords = window.LEVEL_WORDS[currentLevel];
+                if (LEVEL_WORDS[currentLevel]) candidateWords = LEVEL_WORDS[currentLevel];
             }
         }
         if (candidateWords.length === 0) candidateWords = [{word: "사과", category: "음식"}]; 
@@ -608,7 +731,7 @@ function checkWord(word, rect) {
 
         if (possibleWords.size === 0) {
             stopTimer();
-            // [수정] 다국어 변수 사용
+            SoundManager.playFanfare();
             showResultModal("🏆", T.perfectTitle, T.perfectDesc, true);
         }
 
@@ -637,10 +760,25 @@ function showFloatingText(x, y, text) {
     setTimeout(() => el.remove(), 1200);
 }
 
+// [수정] 파티클 발사 함수 (triggerConfetti를 찾아 교체하세요)
 function triggerConfetti() {
-    if (typeof confetti === 'function') {
-        requestAnimationFrame(() => {
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 20000 });
+    // 1. 우리가 만든 전용 캔버스 사용 (추천)
+    if (confettiInstance) {
+        confettiInstance({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            disableForReducedMotion: true // 저사양 기기 배려
+        });
+    } 
+    // 비상용 (혹시라도 초기화 실패 시)
+    else if (typeof confetti === 'function') {
+        confetti({ 
+            particleCount: 150, 
+            spread: 70, 
+            origin: { y: 0.6 },
+            useWorker: false, // 여기도 false!
+            zIndex: 20000 
         });
     }
 }
@@ -796,21 +934,69 @@ window.openSheet = function(word) {
     triggerHaptic('tap');
     const overlay = document.getElementById('sheetOverlay'); 
     const title = document.getElementById('sheetWord'); 
-    const elDesc = document.getElementById('sheetDesc'); 
-    const elEng = document.getElementById('sheetEng'); 
-    const elEngDesc = document.getElementById('sheetEngDesc');
     
+    // UI 요소 가져오기
+    const elEng = document.getElementById('sheetEng');       
+    const elEngDesc = document.getElementById('sheetEngDesc'); 
+    const elDesc = document.getElementById('sheetDesc');     
+    const btnNaver = document.getElementById('btnNaver');    
+
+    // 1. 텍스트 초기화 (깨끗하게 비우기)
     if(elEng) elEng.textContent = "";
     if(elEngDesc) elEngDesc.textContent = "";
+    if(elDesc) elDesc.textContent = "";
 
+    // 2. 제목 설정
     title.textContent = word; 
+
+    // 3. 영어 뜻 표시 로직 (안전장치 추가)
+    let definition = WORD_DETAILS[word]; 
+
+    // [중요] T.noDef나 UI_TEXTS가 없을 경우를 대비한 기본 문구
+    const noDefMsg = (typeof UI_TEXTS !== 'undefined' && UI_TEXTS.noDef) 
+                     ? UI_TEXTS.noDef 
+                     : ((typeof T !== 'undefined' && T.noDef) ? T.noDef : "영어 뜻 데이터가 없습니다.");
+
+    if (definition) {
+        // 뜻이 있는 경우: 노란색으로 크게 표시
+        if(elEng) {
+            elEng.textContent = definition;
+            elEng.style.display = "block";    // [추가] 혹시 숨겨져 있을까봐 강제 표시
+            elEng.style.fontSize = "20px";
+            elEng.style.color = "#f59e0b";    // 오렌지색
+            elEng.style.fontWeight = "bold";
+            elEng.style.marginBottom = "15px";
+            elEng.style.textAlign = "center"; // [추가] 중앙 정렬
+        }
+    } else {
+        // 뜻이 없는 경우: 회색으로 메시지 표시
+        if(elEng) {
+            elEng.textContent = noDefMsg;     // [수정] 안전한 변수 사용
+            elEng.style.display = "block";
+            elEng.style.fontSize = "16px";
+            elEng.style.color = "#94a3b8";    // 회색
+            elEng.style.fontWeight = "normal";
+            elEng.style.marginBottom = "15px";
+            elEng.style.textAlign = "center";
+        }
+    }
     
-    let definition = T.noDef;
-    if (WORD_DETAILS[word]) definition = WORD_DETAILS[word];
-    
-    elDesc.textContent = definition;
-    const btnNaver = document.getElementById('btnNaver');
-    btnNaver.href = `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}`; 
+    // 4. 네이버 사전 버튼 연결
+    if(btnNaver) {
+        btnNaver.onclick = async () => {
+            const url = `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}`;
+            try {
+                await Browser.open({ 
+                    url: url,
+                    presentationStyle: 'popover', 
+                    toolbarColor: '#1e293b'
+                });
+            } catch (e) {
+                window.open(url, '_blank');
+            }
+        };
+    }
+
     overlay.classList.add('active');
 }
 
@@ -850,8 +1036,10 @@ function gameOver(isSuccess) {
     // [수정] 다국어 변수 사용
     if (isSuccess) {
         const timeStr = formatTime(GAME_CONFIG.CHALLENGE_TIME - timeLeft);
+        SoundManager.playFanfare();
         showResultModal("🎉", T.successTitle, `${timeStr} ${T.successDesc}`, true);
     } else {
+        SoundManager.playFail();
         showResultModal("⏰", T.failTitle, `${T.failDesc}${currentScore}`, false);
     }
     // [추가] 결과창이 떴을 때, 다음 게임을 미리 준비합니다.
@@ -919,9 +1107,35 @@ function solveBoard(grid, size) {
     return found;
 }
 
+// [추가] 안드로이드 뒤로가기 버튼 처리
+if (Capacitor.isNativePlatform()) {
+App.addListener('backButton', ({ canGoBack }) => {
+    const activeModal = document.querySelector('.overlay.active, .sheet-wrapper.active');
+    if (activeModal) {
+        activeModal.classList.remove('active');
+        return;
+    }
+
+    const confirmExit = confirm(UI_TEXTS.exitConfirm);
+    
+    if (confirmExit) {
+        App.exitApp();
+    }
+});
+}
+
 window.initGame = initGame;
 window.closeSheet = closeSheet;
 window.startGame = startGame;
+
+// [추가] 화면을 터치하는 순간 오디오 엔진을 깨웁니다 (안전장치)
+document.addEventListener('touchstart', function() {
+    if (SoundManager.ctx && SoundManager.ctx.state === 'suspended') {
+        SoundManager.ctx.resume();
+    } else {
+        SoundManager.init();
+    }
+}, { once: true }); // 딱 한 번만 실행됨
 
 // [추가] 앱 실행 시 첫 번째 게임 데이터를 미리 만들어둡니다.
 setTimeout(prepareGameInBackground, 500);

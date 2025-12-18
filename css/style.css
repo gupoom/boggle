@@ -22,10 +22,23 @@ body {
     color: var(--text-color);
     display: flex; flex-direction: column;
     height: 100dvh;
-    margin: 0; padding: 12px 16px; 
+    margin: 0;
     overflow: hidden; user-select: none;
     -webkit-user-select: none; /* [추가] 사파리용 선택 방지 */
     touch-action: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+
+    /* 부드러운 움직임을 위한 애니메이션 */
+    transition: padding-bottom 0.3s ease;
+}
+
+/* 2. [핵심] 광고가 떴을 때 (.ads-active) 스타일 */
+body.ads-active {
+    /* 기존 하단 여백 + 배너 높이(약 60px)만큼 더 밀어올림 */
+    padding-bottom: calc(env(safe-area-inset-bottom) + 60px);
 }
 
 /* === 인트로 === */
@@ -263,10 +276,32 @@ body {
 .mission-container { width: 100%; display: flex; justify-content: center; position: relative; height: 32px; margin-bottom: 4px; z-index: 20; gap: 12px; }
 
 .mission-bar { 
-    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); 
-    border-radius: 20px; padding: 6px 16px; display: flex; align-items: center; gap: 8px; 
-    font-size: 14px; font-weight: 600; color: #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-    transition: all 0.5s; opacity: 1; transform: translateY(0); 
+    /* 기본 모양 */
+    background: rgba(255, 255, 255, 0.1); 
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    border-radius: 20px; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    color: #e2e8f0; 
+    
+    /* 배치 및 크기 */
+    display: flex; 
+    align-items: center; 
+    justify-content: center; /* 중앙 정렬 추가 */
+    gap: 6px; 
+    padding: 0 14px; /* 좌우 여백만 줌 */
+    height: 36px;    /* 높이 고정 */
+    
+    /* 텍스트 설정 */
+    font-size: 14px; 
+    font-weight: 600; 
+    
+    /* ▼▼▼ [핵심] 줄바꿈 절대 금지 ▼▼▼ */
+    white-space: nowrap; 
+    
+    /* 애니메이션 & 커서 */
+    transition: all 0.5s; 
+    opacity: 1; 
+    transform: translateY(0); 
     cursor: pointer; 
 }
 .mission-bar:active { transform: scale(0.95); }
@@ -277,7 +312,23 @@ body {
 .mission-icon { font-size: 16px; filter: drop-shadow(0 0 5px rgba(255,215,0,0.6)); }
 .mission-score { background: var(--highlight-color); color: #1e293b; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 800; margin-left: 4px; }
 
-.current-word { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: white; text-shadow: 0 2px 12px rgba(0,0,0,0.5); margin-bottom: 8px; letter-spacing: 2px; transition: transform 0.1s; }
+.current-word { 
+    height: 40px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 28px; 
+    font-weight: 700; 
+    color: white; 
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5); 
+    margin-top: 15px; 
+    margin-bottom: 15px; 
+    letter-spacing: 2px; 
+    transition: transform 0.1s; 
+    min-height: 40px;
+    /* 줄바꿈 방지 */
+    white-space: nowrap;
+}
 .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; color: var(--danger-color) !important; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
@@ -367,10 +418,16 @@ body {
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s;
-    display: flex; 
-    align-items: center; 
-    gap: 6px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;  /* 미션바와 높이 통일 */
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    
+    /* ▼▼▼ [핵심] 줄바꿈 절대 금지 ▼▼▼ */
+    white-space: nowrap;
 }
 
 .hint-btn:active {
@@ -674,4 +731,35 @@ input:disabled + .slider { background-color: #333; cursor: not-allowed; opacity:
 .divider-vertical {
     color: #475569;
     font-size: 10px;
+}
+
+/* [수정] 캔버스 배경을 강제로 투명하게 만듭니다 */
+canvas {
+    background-color: transparent !important;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+}
+
+/* 4. 하단 컨테이너 (게임판) 위치 잡기 */
+.bottom-container {
+    /* 화면 아래쪽에 붙되, 광고가 밀어올리면 같이 올라감 */
+    margin-top: auto;
+    width: 100%;
+    padding-bottom: 10px;
+}
+
+#confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 클릭 통과 */
+    z-index: 1500;
+    background-color: transparent !important; /* 투명 배경 */
 }

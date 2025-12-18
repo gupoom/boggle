@@ -2,7 +2,7 @@
 // 난이도 재정립: 1단계(3글자), 2단계(4글자), 3단계(5글자 이상 통합)
 // 모든 단어에 뜻풀이(desc)와 영어(eng, eng_desc) 정보를 추가했습니다.
 
-window.LEVEL_WORDS = {
+export const LEVEL_WORDS = {
     // [Level 1] 초급 (3글자)
     "1": [
         // 가수
