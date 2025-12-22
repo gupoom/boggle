@@ -25,7 +25,7 @@ import { Capacitor } from '@capacitor/core';
 // ▼ [추가] 인앱 브라우저 도구 가져오기
 import { Browser } from '@capacitor/browser';
 
-// --- 전역 변수 ---
+
 let gridData = [];
 let selectedIndices = [];
 let foundWords = new Set();
@@ -56,6 +56,7 @@ let isVibrationOn = true;
 
 // [파티클 설정] 전용 캔버스 가져오기
 let confettiInstance = null; // 파티클 기계
+
 
 // 게임 초기화나 로드 시점에 파티클 기계를 조립합니다.
 setTimeout(() => {
@@ -268,13 +269,20 @@ window.useHint = function() {
 // 몰입 모드(풀스크린) 설정 함수
 async function setImmersiveMode() {
     if (!Capacitor.isNativePlatform()) return;
+    
     try {
-        // 상단바(시계) 숨기기
+        // 1. 상단바를 투명하게 만들고, 앱 화면 위에 겹치게 설정 (Overlay)
+        // 이렇게 하면 상단바가 살짝 보여도 게임 화면을 밀어내지 않습니다.
+        await StatusBar.setOverlaysWebView({ overlay: true });
+        
+        // 2. 상단바 숨기기
         await StatusBar.hide(); 
-        // 하단바(소프트키) 숨기기
-        await NavigationBar.hide(); 
+
+        // 3. 하단바 숨기기
+        // await NavigationBar.hide(); 
+        
     } catch (e) {
-        console.log("풀스크린 설정 실패(웹 등):", e);
+        console.log("풀스크린 설정 실패:", e);
     }
 }
 
