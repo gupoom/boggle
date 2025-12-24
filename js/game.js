@@ -51,6 +51,9 @@ let lastActionTime = Date.now();
 // [추가] 미리 계산된 게임 데이터를 저장할 변수
 let precomputedData = null;
 
+// [추가] 게임 시작 프로세스가 진행 중인지 확인하는 '잠금 장치'
+let isGameProcessing = false;
+
 // 설정 변수
 let isVibrationOn = true;
 
@@ -287,6 +290,8 @@ async function setImmersiveMode() {
 }
 
 window.startFromIntro = function() {
+    if (isGameProcessing) return; // 중복 방지
+    isGameProcessing = true;      // 잠금
     introScreen.classList.add('hidden');
     SoundManager.init();
     triggerHaptic('tap');
@@ -312,8 +317,12 @@ function runCountdownSequence() {
     countdownOverlay.classList.add('active');
     triggerHaptic('tap'); 
 
-    // [추가] 카운트다운 시작과 동시에 데이터 생성 시작!
-    prepareGameInBackground();
+    // 데이터가 이미 있다면? 이 줄은 무시되므로 렉 없이 3, 2, 1이 아주 부드럽게 넘어갑니다.
+    // 데이터가 없다면? '3'이 뜨기 직전에 잠깐 멈칫하고 데이터를 만든 뒤, 카운트를 시작합니다. (끝나고 멈추는 것보다 낫습니다)
+    if (!precomputedData) {
+        console.log("비상! 데이터가 없어서 급하게 생성합니다.");
+        prepareGameInBackground();
+    }
 
     let count = 3;
     updateCount(count);
@@ -331,11 +340,36 @@ function runCountdownSequence() {
 }
 
 window.startWithCountdown = function() {
-    if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
-        AdManager.showInterstitial(runCountdownSequence);
-    } else {
-        runCountdownSequence();
+    // 1. 중복 실행 방지
+    if (isGameProcessing) return;
+    isGameProcessing = true;
+
+    // [핵심] 버튼 누르자마자 일단 화면부터 가립니다!
+    // 결과창이 떠있다면 끄고, 카운트다운 배경(Overlay)을 즉시 켭니다.
+    if (resultModal) resultModal.classList.remove('active');
+    if (countdownOverlay) {
+        countdownOverlay.classList.add('active');
+        // 숫자가 뜨기 전이므로 텍스트는 잠시 비워둡니다 (또는 "Ready" 등)
+        if (countdownText) countdownText.textContent = ""; 
     }
+
+    // 화면이 렌더링될 시간을 아주 잠깐(0.05초) 준 뒤에 광고/게임 로직을 실행
+    // (이렇게 해야 브라우저가 화면을 가린 상태를 확실히 그린 후 멈칫거립니다)
+    setTimeout(() => {
+        const onReadyToCount = () => {
+             runCountdownSequence();
+        };
+
+        if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
+            // 광고를 부릅니다. (이미 배경은 카운트다운 화면으로 가려진 상태!)
+            // 광고가 뜨면 그 위에 뜰 것이고, 광고가 닫히면 가려진 배경 위에서 숫자가 시작됩니다.
+            AdManager.showInterstitial(() => {
+                onReadyToCount();
+            });
+        } else {
+            onReadyToCount();
+        }
+    }, 50);
 };
 
 function updateCount(num) {
@@ -431,6 +465,7 @@ function prepareGameInBackground() {
 // --- [기능 5] 게임 로직 (보드, 타이머) ---
 
 function initGame() {
+    isGameProcessing = false;
     stopTimer();
     resultModal.classList.remove('active');
     currentScore = 0;
@@ -798,6 +833,7 @@ function formatTime(seconds) {
 }
 
 window.setMode = function(mode) {
+    if (isGameProcessing) return; // 중복 클릭 방지
     currentMode = mode;
     document.getElementById('btnPractice').className = mode === 'practice' ? 'mode-btn active' : 'mode-btn';
     document.getElementById('btnChallenge').className = mode === 'challenge' ? 'mode-btn active' : 'mode-btn';
