@@ -1,4 +1,6 @@
 import { CONSTANTS, decomposeWordToTiles } from './rules.js';
+import { HexUtils } from './hex_utils.js';
+import { BoardStrategies } from './board_strategies.js'; // [추가] 전략 파일 임포트
 
 export const WordBoard = {
     ROWS: 5,
@@ -11,13 +13,14 @@ export const WordBoard = {
      * @param {number} size - 보드 크기
      * @returns {object} { grid: 1차원 배열, path: 히든 단어 인덱스 배열 }
      */
-    generateBoard: function(hiddenWord, size = 5) {
-        this.ROWS = size;
-        this.COLS = size;
-
+    generateBoard: function(hiddenWord, size = 5, isHex = false) {
+        // [중요] 육각형은 4열 고정하여 인덱스 꼬임 방지
+        this.ROWS = isHex ? 5 : size;
+        this.COLS = isHex ? 4 : size;
+        
         let success = false;
         let attempts = 0;
-        const MAX_ATTEMPTS = 100;
+        const MAX_ATTEMPTS = 500;
         
         let finalPath = []; // [NEW] 히든 단어의 위치를 저장할 변수
 
@@ -54,7 +57,7 @@ export const WordBoard = {
                 }
 
                 // [중요] 배치 시도 후 '경로(Path)'를 받아옴
-                const placedPath = this.placeWordSnake(decomposedTiles);
+                const placedPath = this.placeWordSnake(decomposedTiles, isHex);
                 
                 if (!placedPath) {
                     continue; // 배치 실패 시 재시도
@@ -63,7 +66,7 @@ export const WordBoard = {
             }
 
             // 4. 나머지 빈칸 채우기 (밸런스 로직 유지)
-            this.fillEmptySpaces(tileBag);
+            this.fillEmptySpaces(tileBag, isHex);
             
             success = true;
         }
@@ -82,7 +85,7 @@ export const WordBoard = {
     },
 
     // 지렁이 배치: 성공 시 경로(Array) 반환, 실패 시 null
-    placeWordSnake: function(tiles) {
+    placeWordSnake: function(tiles, isHex) {
         let positions = [];
         for(let r=0; r<this.ROWS; r++) {
             for(let c=0; c<this.COLS; c++) {
@@ -93,14 +96,14 @@ export const WordBoard = {
 
         for (let pos of positions) {
             // DFS로 경로 탐색
-            const path = this.dfsPlace(tiles, 0, pos.r, pos.c, []);
+            const path = this.dfsPlace(tiles, 0, pos.r, pos.c, [], isHex);
             if (path) return path; // 경로 찾으면 즉시 반환
         }
         return null;
     },
 
     // DFS 재귀 함수: 경로(index 배열) 반환하도록 수정
-    dfsPlace: function(tiles, idx, r, c, visited) {
+    dfsPlace: function(tiles, idx, r, c, visited, isHex) {
         // 범위 및 빈칸 체크
         if (r < 0 || r >= this.ROWS || c < 0 || c >= this.COLS) return null;
         if (this.boardGrid[r][c] !== null && this.boardGrid[r][c] !== tiles[idx]) return null;
@@ -119,23 +122,24 @@ export const WordBoard = {
             return visited.map(v => v.r * this.COLS + v.c);
         }
 
-        // 8방향 셔플
-        const directions = [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]];
-        this.shuffleArray(directions); 
+        // [핵심] 현재 모드에 맞는 전략을 선택하여 이웃을 가져옵니다.
+        const strategy = isHex ? BoardStrategies.hex : BoardStrategies.square;
+        const neighbors = strategy.getNeighbors(r, c, this.ROWS, this.COLS);
 
-        for (let [dr, dc] of directions) {
-            const resultPath = this.dfsPlace(tiles, idx + 1, r + dr, c + dc, visited);
-            if (resultPath) return resultPath; // 경로 찾았으면 상위로 전달
+        this.shuffleArray(neighbors); 
+
+        for (let n of neighbors) {
+            const resultPath = this.dfsPlace(tiles, idx + 1, n.r, n.c, visited, isHex);
+            if (resultPath) return resultPath; 
         }
 
-        // 실패 시 백트래킹 (원상복구)
         this.boardGrid[r][c] = originalChar;
         visited.pop();
         return null;
     },
 
     // (기존 로직 유지) 빈칸 채우기
-    fillEmptySpaces: function(tileBag) {
+    fillEmptySpaces: function(tileBag, isHex) {
         const backupChars = ['ㄱ','ㄴ','ㄹ','ㅁ','ㅅ','ㅇ','ㅏ','ㅣ','ㅗ','ㅜ'];
         
         for (let r = 0; r < this.ROWS; r++) {
@@ -149,7 +153,7 @@ export const WordBoard = {
                             ? tileBag.pop() 
                             : backupChars[Math.floor(Math.random() * backupChars.length)];
 
-                        if (this.isCrowded(r, c, candidate) || !this.isBalanced(r, c, candidate)) {
+                        if (this.isCrowded(r, c, candidate, isHex) || !this.isBalanced(r, c, candidate, isHex)) {
                             if (tileBag.length > 0) {
                                 const randomIdx = Math.floor(Math.random() * tileBag.length);
                                 tileBag.splice(randomIdx, 0, candidate);
@@ -172,38 +176,38 @@ export const WordBoard = {
     },
 
     // (기존 로직 유지) 글자 뭉침 확인
-    isCrowded: function(r, c, char) {
-        const checks = [[-1, 0], [0, -1], [-1, -1], [-1, 1], [1, 0], [0, 1], [1, -1], [1, 1]];
-        for (let [dr, dc] of checks) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr >= 0 && nr < this.ROWS && nc >= 0 && nc < this.COLS) {
-                if (this.boardGrid[nr][nc] === char) return true;
-            }
+    isCrowded: function(r, c, char, isHex) {
+        // [개선] 모드에 맞는 이웃 전략을 가져옵니다.
+        const strategy = isHex ? BoardStrategies.hex : BoardStrategies.square;
+        const neighbors = strategy.getNeighbors(r, c, this.ROWS, this.COLS);
+        
+        for (let n of neighbors) {
+            // n.r, n.c를 사용하여 인접한 타일만 검사합니다.
+            if (this.boardGrid[n.r][n.c] === char) return true;
         }
         return false;
     },
 
     // (기존 로직 유지) 자모 밸런스 확인
-    isBalanced: function(r, c, char) {
+    isBalanced: function(r, c, char, isHex) {
         const isConsonant = CONSTANTS.CHOSUNG.includes(char) || CONSTANTS.JONGSUNG.includes(char);
-        const checks = [[-1, 0], [0, -1], [-1, -1], [-1, 1], [1, 0], [0, 1], [1, -1], [1, 1]];
+        
+        // [개선] 모드에 맞는 이웃 전략을 가져옵니다.
+        const strategy = isHex ? BoardStrategies.hex : BoardStrategies.square;
+        const neighbors = strategy.getNeighbors(r, c, this.ROWS, this.COLS);
+        
         let neighborConsonants = 0;
         let neighborVowels = 0;
         let validNeighbors = 0;
 
-        for (let [dr, dc] of checks) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr >= 0 && nr < this.ROWS && nc >= 0 && nc < this.COLS) {
-                const neighborChar = this.boardGrid[nr][nc];
-                if (neighborChar !== null) { 
-                    validNeighbors++;
-                    if (CONSTANTS.CHOSUNG.includes(neighborChar) || CONSTANTS.JONGSUNG.includes(neighborChar)) {
-                        neighborConsonants++;
-                    } else {
-                        neighborVowels++;
-                    }
+        for (let n of neighbors) {
+            const neighborChar = this.boardGrid[n.r][n.c];
+            if (neighborChar !== null) { 
+                validNeighbors++;
+                if (CONSTANTS.CHOSUNG.includes(neighborChar) || CONSTANTS.JONGSUNG.includes(neighborChar)) {
+                    neighborConsonants++;
+                } else {
+                    neighborVowels++;
                 }
             }
         }

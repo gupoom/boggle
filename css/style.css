@@ -332,13 +332,55 @@ body.ads-active {
 .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; color: var(--danger-color) !important; }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-.grid { display: grid; grid-template-columns: repeat(var(--col-count), 1fr); gap: 8px; padding: 12px; background: var(--card-bg); border-radius: 24px; width: 100%; aspect-ratio: 1/1; box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5); position: relative;}
-.tile { 
-    background-color: var(--tile-bg); color: var(--tile-text); font-size: 22px; font-weight: 700; 
-    display: flex; justify-content: center; align-items: center; 
-    border-radius: 12px; box-shadow: 0 4px 0 #cbd5e1; 
+/* .grid { 
+    display: flex !important;    
+    justify-content: center;      
+    align-items: center;          
+    gap: 8px; 
+    padding: 12px; 
+    background: var(--card-bg); 
+    border-radius: 24px; 
+    width: 100%; 
+    aspect-ratio: 1/1; 
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5); 
+    position: relative;
+} */
+
+.grid { 
+    display: flex !important;      /* 자식(grid-inner)을 중앙에 두기 위함 */
+    justify-content: center;       /* 가로 중앙 */
+    align-items: center;           /* 세로 중앙 */
+    background: var(--card-bg); 
+    border-radius: 24px; 
+    width: 100%; 
+    aspect-ratio: 1/1; 
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5); 
+    position: relative;
+    padding: 0;
+    overflow: hidden;              /* 삐져나온 타일 가리기 */
+}
+
+.grid-inner {
+    position: relative;            /* 타일들의 absolute 기준점 */
+    width: 330px;                  /* 4x5 타일셋이 차지하는 가로 폭 */
+    height: 330px;                 /* 4x5 타일셋이 차지하는 세로 폭 */
+    flex-shrink: 0;                /* 크기 고정 */
+}
+
+.tile {
+    position: absolute;            /* grid-inner를 기준으로 배치 */
+    background-color: var(--tile-bg); 
+    color: var(--tile-text); 
+    font-size: 22px; 
+    font-weight: 700; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 0 #cbd5e1; 
     transition: transform 0.1s, background-color 0.1s; 
-    position: relative; border: 2px solid transparent; cursor: pointer; 
+    border: 2px solid transparent; 
+    cursor: pointer; 
 }
 .tile.selected { background-color: var(--accent-color); color: white; box-shadow: none; transform: translateY(4px); }
 .tile.last-selected { background-color: var(--highlight-color) !important; border: 2px solid #fff !important; transform: translateY(4px) scale(1.05); z-index: 10; }
@@ -762,4 +804,128 @@ canvas {
     pointer-events: none; /* 클릭 통과 */
     z-index: 1500;
     background-color: transparent !important; /* 투명 배경 */
+}
+
+/* --- 육각형 모드 (.hex-mode) 최종 정제 버전: 잔상 완벽 제거 --- */
+
+.tile.hex {
+    position: absolute;            
+    margin: 0 !important;          
+    
+    /* 부드러운 육각형 clip-path */
+    clip-path: polygon(
+        48% 0%, 52% 0%, 
+        98% 23%, 100% 27%, 
+        100% 73%, 98% 77%, 
+        52% 100%, 48% 100%, 
+        2% 77%, 0% 73%, 
+        0% 27%, 2% 23%
+    );
+
+    /* 입체감: 사각형의 하단 두께 효과와 동일하게 적용 */
+    filter: drop-shadow(0 4px 0 #cbd5e1);
+    
+    background-color: var(--tile-bg);
+    color: var(--tile-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: none;
+    z-index: 1;
+
+    /* 위치 및 필터 변화를 부드럽게 */
+    transform: translateY(0);
+    transition: transform 0.1s, filter 0.1s, background-color 0.1s;
+}
+
+/* 선택된 타일 공통 스타일 (눌린 효과만 유지) */
+.tile.hex.selected {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+    z-index: 10 !important;
+
+    /* 아래로 4px 이동하여 밑면을 완전히 가림 */
+    transform: translateY(4px); 
+    
+    /* [수정] 모든 필터를 제거하여 미세한 흰색 테두리 원천 차단 */
+    filter: none !important;
+}
+
+/* 마지막 선택 타일: 테두리 효과 완전 제거 */
+.tile.hex.last-selected {
+    background-color: var(--highlight-color) !important;
+    z-index: 11 !important;
+    
+    /* 눌린 상태 유지 */
+    transform: translateY(4px);
+    
+    /* [수정] 흰색 drop-shadow를 완전히 제거하여 잔상 방지 */
+    filter: none !important;
+}
+
+/* 모든 가상 요소 및 중복 선 제거 */
+.tile.hex.selected::after,
+.tile.hex.last-selected::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* [css/style.css] 이중 클립패스를 이용한 육각형 테두리 버튼 */
+
+.option-btn.option-hex {
+    position: relative;
+    aspect-ratio: 1 / 1.15;
+    background: rgba(255, 255, 255, 0.2) !important; /* [1] 이 색상이 테두리 색이 됩니다 */
+    border: none !important;
+    padding: 0; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 바깥쪽 육각형 모양으로 깎기 */
+    clip-path: polygon(
+        46% 0%, 54% 0%, 
+        94% 16%, 100% 24%, 
+        100% 76%, 94% 84%, 
+        54% 100%, 46% 100%, 
+        6% 84%, 0% 76%, 
+        0% 24%, 6% 16%
+    );
+}
+
+.option-btn.option-hex::before {
+    content: "";
+    position: absolute;
+    /* [2] 테두리 두께만큼 안쪽으로 들여쓰기 (1.5px ~ 2px 추천) */
+    top: 1.5px; left: 1.5px; right: 1.5px; bottom: 1.5px;
+    
+    /* [3] 안쪽을 투명하게 파내기 (모달 배경색과 맞춤) */
+    background: #3E5164 !important; 
+    
+    /* 안쪽 육각형 모양으로 똑같이 깎기 */
+    clip-path: polygon(
+        46% 0%, 54% 0%, 
+        94% 16%, 100% 24%, 
+        100% 76%, 94% 84%, 
+        54% 100%, 46% 100%, 
+        6% 84%, 0% 76%, 
+        0% 24%, 6% 16%
+    );
+}
+
+/* 글자가 테두리보다 위에 보이게 설정 */
+.option-btn.option-hex span {
+    position: relative;
+    z-index: 1;
+    color: #ffffff;
+}
+
+/* [선택됨] 상태: 테두리 없이 전체가 색으로 채워짐 */
+.option-btn.option-hex.selected {
+    background: var(--primary-gradient) !important;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+}
+
+.option-btn.option-hex.selected::before {
+    display: none; /* 선택 시 안쪽 파내기 효과 제거 */
 }

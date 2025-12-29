@@ -1,5 +1,7 @@
 import { WordBoard } from './board.js';
+import { HexUtils } from './hex_utils.js'; // 육각형 헥스 유틸
 import { assembleHangul } from './rules.js';
+import { BoardStrategies } from './board_strategies.js';
 import { GAME_CONFIG } from './config.js';
 // [추가] 다국어 지원 모듈 가져오기
 import { T, UI_TEXTS, initLocaleUI } from './locale.js';
@@ -38,6 +40,7 @@ let timerInterval = null;
 let timeLeft = GAME_CONFIG.CHALLENGE_TIME;
 let timeElapsed = 0;
 let currentGridSize = 4;
+let isHexMode = false; // 육각형 모드 여부
 let currentLevel = 'all';
 
 let totalWordCount = 0;
@@ -445,7 +448,7 @@ function prepareGameInBackground() {
     const category = (typeof hiddenData === 'string') ? '' : hiddenData.category;
     
     // 3. 보드 생성 (이게 가장 오래 걸림)
-    const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize);
+    const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize, isHexMode);
     
     // 4. 정답 미리 찾기 (이것도 오래 걸림)
     const possibleWordsMap = solveBoard(gameData.grid, currentGridSize);
@@ -467,30 +470,42 @@ function prepareGameInBackground() {
 function initGame() {
     isGameProcessing = false;
     stopTimer();
-    resultModal.classList.remove('active');
-    currentScore = 0;
-    scoreElement.textContent = "0";
+    if (resultModal) resultModal.classList.remove('active');
     
+    // 1. 데이터 및 UI 초기화
+    currentScore = 0;
+    if (scoreElement) scoreElement.textContent = "0";
     currentHintStep = 0;
     hiddenWordPath = [];
     possibleWords.clear(); 
     foundWords.clear();
+    selectedIndices = []; 
     lastActionTime = Date.now();
     
+    if (wordListElement) wordListElement.innerHTML = ''; 
+    if (wordDisplay) {
+        wordDisplay.textContent = T.start;
+        wordDisplay.classList.remove('anim-success', 'anim-fail', 'shake');
+    }
+    
+    // 드래그 선 초기화
+    const dragPath = document.getElementById('dragPath');
+    if (dragPath) dragPath.setAttribute('d', '');
+
     updateStatsUI();
 
-    document.querySelectorAll('.tile').forEach(t => t.classList.remove('idle-hint'));
-    
-    if (hintBar) {
-        hintBar.classList.remove('success'); 
-        hintBar.classList.add('hidden');
-        const iconSpan = hintBar.querySelector('.mission-icon');
-        if(iconSpan) iconSpan.textContent = "🎁"; 
+    // 2. 모드에 따른 그리드 클래스 설정
+    gridElement.className = 'grid'; 
+    if (isHexMode) {
+        gridElement.classList.add('hex-mode'); 
+    } else {
+        gridElement.style.setProperty('--col-count', currentGridSize);
     }
 
-    gridElement.style.setProperty('--col-count', currentGridSize);
-    const fontSize = currentGridSize === 6 ? '18px' : (currentGridSize === 4 ? '24px' : '22px');
-    
+    // [중요] fontSize 정의 누락 해결
+    const fontSize = isHexMode ? '20px' : (currentGridSize === 4 ? '24px' : '22px');
+
+    // 3. 타이머 설정
     if (currentMode === 'challenge') {
         timeLeft = GAME_CONFIG.CHALLENGE_TIME;
         timerElement.textContent = formatTime(timeLeft);
@@ -501,26 +516,17 @@ function initGame() {
         timerElement.style.color = "#f59e0b"; 
     }
     
-    // ============================================================
-    // [수정] 미리 계산된 데이터(precomputedData)가 있는지 확인
-    // ============================================================
+    // 4. 게임 데이터 로드
     let category = "";
-
     if (precomputedData) {
-        // 1. 미리 계산된 데이터 사용 (딜레이 없음!)
         gridData = precomputedData.grid;
         hiddenWordPath = precomputedData.path;
         currentHiddenWord = precomputedData.hiddenWord;
         possibleWords = precomputedData.possibleWords;
         category = precomputedData.category;
-        
-        // 사용 후 초기화
         precomputedData = null; 
-        console.log(`[FastLoad] 미리 계산된 데이터 사용: ${currentHiddenWord}`);
-    } 
-    else {
-        // 2. 데이터가 없으면 직접 계산 (기존 로직 - 폴백)
-        // (새 게임 버튼을 광클하거나, 카운트다운 없이 시작할 경우를 대비)
+    } else {
+        // 데이터가 없을 때의 생성 로직 (생략하지 않고 기존 로직 유지)
         let candidateWords = [];
         if (typeof LEVEL_WORDS !== 'undefined') {
             if (currentLevel === 'all') {
@@ -532,22 +538,17 @@ function initGame() {
             }
         }
         if (candidateWords.length === 0) candidateWords = [{word: "사과", category: "음식"}]; 
-
         const hiddenData = candidateWords[Math.floor(Math.random() * candidateWords.length)];
         const hiddenWord = (typeof hiddenData === 'string') ? hiddenData : hiddenData.word;
         category = (typeof hiddenData === 'string') ? '' : hiddenData.category;
-
         currentHiddenWord = hiddenWord;
-        
-        const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize);
+        const gameData = WordBoard.generateBoard(hiddenWord, currentGridSize, isHexMode);
         gridData = gameData.grid;
         hiddenWordPath = gameData.path; 
         possibleWords = solveBoard(gridData, currentGridSize);
     }
     
-    // --- 공통 UI 처리 (힌트 텍스트 등) ---
-    console.log(`[${currentMode}/${currentGridSize}x${currentGridSize}] 히든: ${currentHiddenWord}`);
-
+    // 히든 단어 힌트 UI 처리
     if (category) {
         const translatedCategory = T.categories[category] || category;
         hintText.textContent = `${T.hintHidden}${translatedCategory}`;
@@ -561,53 +562,115 @@ function initGame() {
     if(foundCountEl) foundCountEl.textContent = "0";
     if(totalCountEl) totalCountEl.textContent = `/ ${totalWordCount}`;
 
-    selectedIndices = [];
+    // 5. [핵심 수정] 타일 생성 루프 통합 및 중복 제거
+    // --- [최종] 타일 생성 및 중앙 배치 로직 ---
     isDragging = false;
-    gridElement.innerHTML = '';
-    wordListElement.innerHTML = '';
     
-    wordDisplay.textContent = T.start;
-    wordDisplay.classList.remove('anim-success', 'anim-fail', 'shake');
+    // 1. 기존 타일들이 담기던 grid 대신, 내부 주머니(gridInner)를 비우고 사용합니다.
+    // const gridInner = document.getElementById('gridInner');
+    // if (!gridInner) return; 
+    
+    // gridInner.innerHTML = ''; 
+    
+    // 부모(.grid)의 스타일을 초기화하여 중앙 정렬 환경을 만듭니다.
+    // gridElement.style.display = 'flex';
+    // gridElement.style.justifyContent = 'center';
+    // gridElement.style.alignItems = 'center';
+    // gridElement.style.padding = '0'; 
 
-    const totalTiles = currentGridSize * currentGridSize;
-    for (let i = 0; i < totalTiles; i++) {
-        const tile = document.createElement('div');
-        tile.className = 'tile';
-        tile.textContent = gridData[i];
-        tile.dataset.index = i;
-        tile.style.fontSize = fontSize; 
-        
-        tile.addEventListener('mousedown', (e) => startDrag(e));
-        tile.addEventListener('touchstart', (e) => { 
-            if(e.cancelable) e.preventDefault(); 
-            startDrag(e); 
-        }, {passive: false});
-        
-        gridElement.appendChild(tile);
+    const gridInner = document.getElementById('gridInner');
+    gridInner.innerHTML = '';
+    
+    if (isHexMode) {
+        // --- 1. 육각형 모드 (타일 사이즈 축소 및 정밀 배치) ---
+        const hexW = 72; // [수정] 기존 78에서 축소
+        const hexH = 80; // [수정] 높이 비례 축소
+        const offsetX = 76; // [수정] 가로 간격 밀착
+        const offsetY = 64; // [수정] 세로 간격 밀착 (맞물림)
+
+        for (let i = 0; i < 20; i++) {
+            const char = gridData[i] || ""; 
+            const tile = document.createElement('div');
+            tile.className = 'tile hex'; 
+            
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+
+            // 좌표 계산
+            let x = col * offsetX;
+            if (row % 2 === 1) x += offsetX / 2; // 지그재그
+            const y = row * offsetY;
+
+            tile.style.width = `${hexW}px`;
+            tile.style.height = `${hexH}px`;
+            tile.style.left = `${x}px`;
+            tile.style.top = `${y}px`;
+            tile.style.fontSize = '22px';
+            
+            tile.textContent = char;
+            tile.dataset.index = i;
+
+            tile.addEventListener('mousedown', (e) => startDrag(e));
+            tile.addEventListener('touchstart', (e) => { 
+                if(e.cancelable) e.preventDefault(); 
+                startDrag(e); 
+            }, {passive: false});
+
+            gridInner.appendChild(tile);
+        }
     }
+    else {
+        // --- 2. 사각형 모드 (4x4, 5x5 가변 크기 배치) ---
+        const size = currentGridSize; 
+        const gap = 8; 
+        const totalInnerSize = 330; // grid-inner의 가로/세로 폭
+        const tileSize = (totalInnerSize - (gap * (size - 1))) / size;
+
+        gridData.forEach((char, i) => {
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            
+            const row = Math.floor(i / size);
+            const col = i % size;
+
+            const x = col * (tileSize + gap);
+            const y = row * (tileSize + gap);
+
+            tile.style.width = `${tileSize}px`;
+            tile.style.height = `${tileSize}px`;
+            tile.style.left = `${x}px`;
+            tile.style.top = `${y}px`;
+            
+            // 5x5일 경우 글자 크기를 살짝 줄임
+            tile.style.fontSize = size === 5 ? '18px' : '22px'; 
+            
+            tile.textContent = char;
+            tile.dataset.index = i;
+
+            tile.addEventListener('mousedown', (e) => startDrag(e));
+            tile.addEventListener('touchstart', (e) => { 
+                if(e.cancelable) e.preventDefault(); 
+                startDrag(e); 
+            }, {passive: false});
+
+            gridInner.appendChild(tile);
+        });
+    }
+
     startTimer();
 }
 
 function getTileFromEvent(e, isStart = false) {
     const x = e.touches ? e.touches[0].clientX : e.clientX;
     const y = e.touches ? e.touches[0].clientY : e.clientY;
-    const el = document.elementFromPoint(x, y);
     
+    // 현재 좌표에 있는 엘리먼트 찾기
+    const el = document.elementFromPoint(x, y);
     if (!el) return null;
-    if (el.classList.contains('tile')) {
-        if (isStart) return el;
 
-        const rect = el.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const sensitivity = 0.75; 
-        const safeRadius = (rect.width / 2) * sensitivity; 
-        
-        if (Math.hypot(x - centerX, y - centerY) < safeRadius) {
-            return el;
-        }
-    }
-    return null;
+    // hex-dummy는 무시하고 실제 타일만 반환
+    const tile = el.closest('.tile:not(.hex-dummy)');
+    return tile;
 }
 
 function startDrag(e) {
@@ -654,14 +717,22 @@ function processTile(tile) {
         document.querySelectorAll('.tile').forEach(t => t.classList.remove('last-selected'));
         tile.classList.add('last-selected');
         updateCurrentWord();
+        updateDragLine();
     }
 }
 
-function isAdjacent(prev, curr) {
-    const size = currentGridSize;
-    const pR = Math.floor(prev / size), pC = prev % size;
-    const cR = Math.floor(curr / size), cC = curr % size;
-    return Math.abs(pR - cR) <= 1 && Math.abs(pC - cC) <= 1;
+function isAdjacent(prevIdx, currIdx) {
+    const cols = isHexMode ? 4 : currentGridSize; // [수정] 모드별 열 개수 동기화
+    const pR = Math.floor(prevIdx / cols);
+    const pC = prevIdx % cols;
+    const cR = Math.floor(currIdx / cols);
+    const cC = currIdx % cols;
+
+    const strategy = isHexMode ? BoardStrategies.hex : BoardStrategies.square;
+    const neighbors = strategy.getNeighbors(pR, pC, (isHexMode ? 5 : currentGridSize), cols);
+
+    // 논리적 이웃 여부 확인
+    return neighbors.some(n => n.r === cR && n.c === cC);
 }
 
 function updateCurrentWord() {
@@ -863,22 +934,35 @@ window.openOptionModal = function(type) {
     list.classList.remove('grid-options', 'level-options');
 
     if (type === 'grid') {
-        // [수정] "보드 크기 선택" -> T.optTitleGrid
         title.textContent = T.optTitleGrid;
-        list.classList.add('grid-options'); 
-        [4, 5, 6].forEach(s => {
+        list.classList.add('grid-options');
+        
+        // 4x4, 5x5, Hex 버튼 생성
+        const options = [
+            { label: '4x4', val: 4, isHex: false },
+            { label: '5x5', val: 5, isHex: false },
+            { label: '4x5', val: 5, isHex: true }
+        ];
+
+        options.forEach(opt => {
+            const isSelected = (currentGridSize === opt.val && isHexMode === opt.isHex);
             const btn = document.createElement('button');
-            btn.className = `option-btn ${currentGridSize == s ? 'selected' : ''}`;
-            btn.innerHTML = `<span style="font-size:24px;">${s}x${s}</span>`;
+            btn.className = `option-btn ${isSelected ? 'selected' : ''} ${opt.isHex ? 'option-hex' : ''}`;
+        
+            btn.innerHTML = `<span style="font-size:24px;">${opt.label}</span>`;
             btn.onclick = () => {
-                currentGridSize = s;
-                document.getElementById('txtGridSize').textContent = `${s}x${s}`;
+                currentGridSize = opt.val;
+                isHexMode = opt.isHex; // 모드 설정
+                
+                // 버튼 텍스트 업데이트
+                document.getElementById('txtGridSize').textContent = opt.isHex ? `Hex (${opt.label})` : opt.label;
                 closeOptionModal();
                 startWithCountdown();
             };
             list.appendChild(btn);
         });
-    } else if (type === 'level') {
+    }
+    else if (type === 'level') {
         // [수정] "숨은 단어 난이도" -> T.optTitleLevel
         title.textContent = T.optTitleLevel;
         list.classList.add('level-options');
@@ -1128,27 +1212,31 @@ function addWordTag(word, pts, isHidden = false) {
 
 function solveBoard(grid, size) {
     const found = new Map();
-    const directions = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    const cols = isHexMode ? 4 : size; // [수정] 인덱스 계산 기준 통일
+
     function search(idx, path) {
         if (path.length >= 3) {
-            const chars = path.map(p => grid[p]);
-            const word = assembleHangul(chars, COMBINED_DICTIONARY);
+            const word = assembleHangul(path.map(p => grid[p]), COMBINED_DICTIONARY);
             if (COMBINED_DICTIONARY.has(word) && !found.has(word)) {
-                found.set(word, path[0]);
+                found.set(word, path[0]); // 시작 인덱스 저장
             }
         }
         if (path.length >= 7) return;
-        const r = Math.floor(idx / size), c = idx % size;
-        for (const [dr, dc] of directions) {
-            const nr = r + dr, nc = c + dc;
-            const nIndex = nr * size + nc;
-            if (nr >= 0 && nr < size && nc >= 0 && nc < size && !path.includes(nIndex)) {
-                search(nIndex, [...path, nIndex]);
-            }
+
+        const r = Math.floor(idx / cols);
+        const c = idx % cols;
+        const strategy = isHexMode ? BoardStrategies.hex : BoardStrategies.square;
+        const neighbors = strategy.getNeighbors(r, c, (isHexMode ? 5 : size), cols);
+
+        for (const n of neighbors) {
+            const nIdx = n.r * cols + n.c;
+            if (!path.includes(nIdx)) search(nIdx, [...path, nIdx]);
         }
     }
-    for (let i = 0; i < size * size; i++) search(i, [i]);
-    return found;
+    for (let i = 0; i < grid.length; i++) {
+        search(i, [i]);
+    }
+    return found; // [유지] 찾은 결과물 반환
 }
 
 // [추가] 안드로이드 뒤로가기 버튼 처리
@@ -1183,3 +1271,39 @@ document.addEventListener('touchstart', function() {
 
 // [추가] 앱 실행 시 첫 번째 게임 데이터를 미리 만들어둡니다.
 setTimeout(prepareGameInBackground, 500);
+
+function updateDragLine() {
+    const dragPath = document.getElementById('dragPath');
+    if (!dragPath || selectedIndices.length < 1) return;
+
+    let d = '';
+    selectedIndices.forEach((idx, i) => {
+        // [수정] 우리가 만든 절대 좌표용 getCenter 사용
+        const pos = getCenter(idx);
+        if (i === 0) d += `M${pos.x},${pos.y} `;
+        else d += `L${pos.x},${pos.y} `;
+    });
+
+    // 드래그 중인 손가락 끝까지 선 연결
+    if (isDragging && lastTouchPos) {
+        const gridRect = gridElement.getBoundingClientRect();
+        const tx = lastTouchPos.x - gridRect.left;
+        const ty = lastTouchPos.y - gridRect.top;
+        d += `L${tx},${ty}`;
+    }
+
+    dragPath.setAttribute('d', d);
+}
+function getCenter(index) {
+    // dataset.index를 가진 요소를 찾습니다. (dummy는 index가 없음)
+    const tile = gridElement.querySelector(`.tile[data-index="${index}"]`);
+    if (!tile) return { x: 0, y: 0 };
+
+    const rect = tile.getBoundingClientRect();
+    const gridRect = gridElement.getBoundingClientRect();
+
+    return {
+        x: rect.left + rect.width / 2 - gridRect.left,
+        y: rect.top + rect.height / 2 - gridRect.top
+    };
+}
