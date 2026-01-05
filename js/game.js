@@ -27,6 +27,7 @@ import { Capacitor } from '@capacitor/core';
 // ▼ [추가] 인앱 브라우저 도구 가져오기
 import { Browser } from '@capacitor/browser';
 
+import { RankManager } from './rank.js';
 
 let gridData = [];
 let selectedIndices = [];
@@ -343,34 +344,53 @@ function runCountdownSequence() {
 }
 
 window.startWithCountdown = function() {
-    // 1. 중복 실행 방지
-    if (isGameProcessing) return;
-    isGameProcessing = true;
+    // 1. 중복 실행 방지 (잠금 확인)
+    if (isGameProcessing) {
+        console.log("Game is processing...");
+        return;
+    }
+    isGameProcessing = true; // 잠금 걸기
 
-    // [핵심] 버튼 누르자마자 일단 화면부터 가립니다!
-    // 결과창이 떠있다면 끄고, 카운트다운 배경(Overlay)을 즉시 켭니다.
+    // [핵심 수정] 안전장치: 3초가 지나도 게임이 시작 안 되면(오류 상황) 강제로 잠금을 풉니다.
+    // 광고가 없어도 스크립트 오류나 렉으로 인해 멈추는 것을 방지합니다.
+    const safetyTimer = setTimeout(() => {
+        if (isGameProcessing) {
+            console.warn("Force starting game due to timeout");
+            isGameProcessing = false; // 잠금 해제
+            runCountdownSequence();   // 강제 시작
+        }
+    }, 3000); // 3초 타임아웃
+
+    // 결과창 끄기 및 카운트다운 오버레이 준비
     if (resultModal) resultModal.classList.remove('active');
     if (countdownOverlay) {
         countdownOverlay.classList.add('active');
-        // 숫자가 뜨기 전이므로 텍스트는 잠시 비워둡니다 (또는 "Ready" 등)
         if (countdownText) countdownText.textContent = ""; 
     }
 
-    // 화면이 렌더링될 시간을 아주 잠깐(0.05초) 준 뒤에 광고/게임 로직을 실행
-    // (이렇게 해야 브라우저가 화면을 가린 상태를 확실히 그린 후 멈칫거립니다)
+    // 0.05초 뒤 실행 (UI 렌더링 확보)
     setTimeout(() => {
+        // 게임 시작 실행 함수 (성공 시 타임아웃 해제)
         const onReadyToCount = () => {
-             runCountdownSequence();
+            clearTimeout(safetyTimer); // 정상이므로 안전장치 해제
+            runCountdownSequence();
         };
 
-        if (typeof AdManager !== 'undefined' && !AdManager.isAdRemoved) {
-            // 광고를 부릅니다. (이미 배경은 카운트다운 화면으로 가려진 상태!)
-            // 광고가 뜨면 그 위에 뜰 것이고, 광고가 닫히면 가려진 배경 위에서 숫자가 시작됩니다.
-            AdManager.showInterstitial(() => {
-                onReadyToCount();
-            });
-        } else {
+        // 광고 제거 상태 확인
+        // AdManager가 없거나, 광고가 제거된 상태라면 바로 시작
+        if (typeof AdManager === 'undefined' || AdManager.isAdRemoved) {
             onReadyToCount();
+        } 
+        else {
+            // 광고가 있는 경우 (혹시 모를 에러 대비 try-catch)
+            try {
+                AdManager.showInterstitial(() => {
+                    onReadyToCount();
+                });
+            } catch (e) {
+                console.error("Ad error:", e);
+                onReadyToCount(); // 에러 나도 게임은 시작시켜줌
+            }
         }
     }, 50);
 };
@@ -661,15 +681,38 @@ function initGame() {
 }
 
 function getTileFromEvent(e, isStart = false) {
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
+    // 1. 현재 터치/마우스 좌표 가져오기
+    // (터치 이벤트가 끝나거나 없을 때를 대비한 안전장치 추가)
+    const touch = (e.touches && e.touches.length > 0) ? e.touches[0] : e;
+    const x = touch.clientX;
+    const y = touch.clientY;
     
-    // 현재 좌표에 있는 엘리먼트 찾기
+    // 2. 해당 좌표에 있는 요소 찾기
     const el = document.elementFromPoint(x, y);
     if (!el) return null;
 
-    // hex-dummy는 무시하고 실제 타일만 반환
+    // 3. 실제 타일인지 확인 (hex-dummy 무시)
     const tile = el.closest('.tile:not(.hex-dummy)');
+    if (!tile) return null;
+
+    // [복구된 로직] 드래그 중일 때는 타일의 중앙 70% 영역에 들어와야 인식
+    // 이렇게 해야 타일 사이를 지나갈 때 옆 타일이 실수로 선택되는 것을 막아줍니다.
+    if (!isStart) {
+        const rect = tile.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        // 터치점과 타일 중심 사이의 거리 계산 (피타고라스)
+        const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        
+        // 타일 너비의 35% (지름 기준 70%)를 유효 반경으로 설정
+        // 육각형/사각형 모두 이 원형 판정을 쓰면 조작감이 훨씬 부드러워집니다.
+        const limit = rect.width * 0.35; 
+
+        // 거리가 유효 반경보다 멀면(가장자리), 선택하지 않음
+        if (dist > limit) return null;
+    }
+
     return tile;
 }
 
@@ -774,8 +817,8 @@ function endDrag() {
 }
 
 function checkWord(word, rect) {
+    // 1. 이미 찾은 단어 체크
     if (foundWords.has(word)) { 
-        // [수정] 다국어 변수 사용
         wordDisplay.textContent = T.alreadyFound; 
         wordDisplay.classList.add('anim-fail', 'shake'); 
         triggerHaptic('fail');
@@ -784,30 +827,42 @@ function checkWord(word, rect) {
         return; 
     }
 
+    // 2. 글자 수 체크 (3글자 미만)
     if (selectedIndices.length < 3) {
         wordDisplay.classList.add('anim-fail', 'shake');
         triggerHaptic('fail');
         SoundManager.playFail();
-        // [수정] 다국어 변수 사용
         showToast(word, T.tooShort);
         setTimeout(() => wordDisplay.classList.remove('anim-fail', 'shake'), 500);
         return;
     }
 
+    // 3. 정답 여부 확인
     const inGameDic = COMBINED_DICTIONARY.has(word);
     
     if (inGameDic) {
+        // --- 정답 처리 로직 ---
         foundWords.add(word);
         if (possibleWords.has(word)) {
-            possibleWords.delete(word);
+            possibleWords.delete(word); // 남은 단어 목록에서 제거
         }
 
         if(foundCountEl) foundCountEl.textContent = foundWords.size;
 
+        // [수정된 부분] 점수 계산 로직 (config.js의 14타일 확장 반영)
         const tileCount = selectedIndices.length;
-        let pts = GAME_CONFIG.POINTS[tileCount] || GAME_CONFIG.POINTS[7] || 10;
-        if (tileCount >= 7) pts = GAME_CONFIG.POINTS[7];
+        let pts = 0;
+
+        // 14타일 이상이면 POINTS[14] 값 사용 (22점)
+        if (tileCount >= 14) {
+            pts = GAME_CONFIG.POINTS[14];
+        } 
+        // 3~13타일이면 설정된 점수 사용, 없으면 최소점수(2) 사용
+        else {
+            pts = GAME_CONFIG.POINTS[tileCount] || 2;
+        }
         
+        // 히든 단어 체크
         let isHiddenFound = false;
         if (word === currentHiddenWord) {
             isHiddenFound = true;
@@ -817,7 +872,6 @@ function checkWord(word, rect) {
                 hintBar.classList.add('success'); 
                 const iconSpan = hintBar.querySelector('.mission-icon');
                 if(iconSpan) iconSpan.textContent = "👑"; 
-                // [수정] 다국어 변수 사용
                 hintText.textContent = T.hintFound;
                 hintTooltip.classList.remove('show');
             }
@@ -826,9 +880,11 @@ function checkWord(word, rect) {
             SoundManager.playSuccess(); 
         }
 
+        // 점수 획득 효과 (플로팅 텍스트)
         if (rect) showFloatingText(rect.left + rect.width/2, rect.top, `+${pts}`);
         triggerHaptic('success');
 
+        // 점수 UI 업데이트
         if (pts > 0) {
             currentScore += pts;
             const scoreEl = document.getElementById('score');
@@ -836,19 +892,37 @@ function checkWord(word, rect) {
             void scoreEl.offsetWidth;
             scoreEl.classList.add('bump');
             scoreEl.textContent = currentScore;
-            
-            if (currentMode === 'challenge' && currentScore >= GAME_CONFIG.TARGET_SCORE) {
+        }
+
+        // 승리 조건 체크 (모드별 분기)
+        if (currentMode === 'challenge') {
+            // [타임어택] 시간 종료가 원칙이지만, 만약 100% 다 찾았다면 퍼펙트로 종료
+            if (possibleWords.size === 0) {
                 stopTimer();
-                gameOver(true);
+                SoundManager.playFanfare();
+                showResultModal("🏆", T.perfectTitle, T.perfectDesc, true);
+            }
+        } 
+        else {
+            // [스피드런] 목표 비율(예: 90%) 달성 시 종료
+            const currentPercent = (foundWords.size / totalWordCount) * 100;
+
+            if (currentPercent >= GAME_CONFIG.SPEED_RUN_GOAL_PERCENT) {
+                stopTimer();
+                
+                // 100% 완벽하게 찾았을 경우
+                if (possibleWords.size === 0) {
+                    SoundManager.playFanfare();
+                    showResultModal("🏆", T.perfectTitle, T.perfectDesc, true);
+                } 
+                // 목표치(90%)만 넘겨서 성공했을 경우
+                else {
+                    gameOver(true); 
+                }
             }
         }
 
-        if (possibleWords.size === 0) {
-            stopTimer();
-            SoundManager.playFanfare();
-            showResultModal("🏆", T.perfectTitle, T.perfectDesc, true);
-        }
-
+        // 단어 뜻 토스트 및 태그 추가
         let toastMsg = WORD_DETAILS[word] || T.noDef;
         showToast(word, toastMsg);
 
@@ -857,6 +931,7 @@ function checkWord(word, rect) {
         setTimeout(() => wordDisplay.classList.remove('anim-success'), 500);
     } 
     else {
+        // 오답 처리
         wordDisplay.classList.add('anim-fail', 'shake'); 
         triggerHaptic('fail');
         SoundManager.playFail();
@@ -898,9 +973,44 @@ function triggerConfetti() {
 }
 
 function formatTime(seconds) {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+
+    // 1시간(3600초) 이상일 때만 H:MM:SS 형식 사용
+    if (h > 0) {
+        return `${h}:${m}:${s}`;
+    } else {
+        // 1시간 미만이면 기존처럼 MM:SS 형식 유지
+        return `${m}:${s}`;
+    }
+}
+
+// [추가] 국가 코드를 국기 이모지로 변환하는 함수
+function getFlagEmoji() {
+    // 1. 브라우저 언어 설정 가져오기 (예: 'ko-KR', 'en-US', 'ja')
+    const locale = navigator.language || navigator.userLanguage || 'en-US';
+    
+    // 2. 국가 코드 추출 ('KR', 'US' 등)
+    let region = locale.split('-')[1];
+    
+    // 국가 코드가 없으면 언어 코드로 추정 (예: 'ja' -> 'JP')
+    if (!region) {
+        const lang = locale.split('-')[0].toLowerCase();
+        const langMap = { 'ko': 'KR', 'en': 'US', 'ja': 'JP', 'zh': 'CN', 'fr': 'FR', 'de': 'DE', 'es': 'ES' };
+        region = langMap[lang] || 'UN'; // UN은 알 수 없음(United Nations 깃발 등) 혹은 지구본
+    }
+
+    // 3. 국가 코드를 이모지 유니코드로 변환
+    // (A: 127462 ... Z: 127487)
+    if (region.length === 2) {
+        const codePoints = region
+            .toUpperCase()
+            .split('')
+            .map(char => 127462 + char.charCodeAt(0) - 'A'.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+    }
+    return "🌍"; // 실패 시 지구본
 }
 
 window.setMode = function(mode) {
@@ -922,7 +1032,7 @@ function updateStatsUI() {
         if(statScoreGroup) statScoreGroup.style.display = 'flex';
         if(statWordGroup) statWordGroup.style.display = 'flex'; 
         if(btnHint) btnHint.classList.add('hidden');
-        if(targetScoreElement) targetScoreElement.style.visibility = 'visible';
+        if(targetScoreElement) targetScoreElement.style.visibility = 'hidden';
     }
 }
 
@@ -955,7 +1065,8 @@ window.openOptionModal = function(type) {
                 isHexMode = opt.isHex; // 모드 설정
                 
                 // 버튼 텍스트 업데이트
-                document.getElementById('txtGridSize').textContent = opt.isHex ? `Hex (${opt.label})` : opt.label;
+                // document.getElementById('txtGridSize').textContent = opt.isHex ? `Hex (${opt.label})` : opt.label;
+                document.getElementById('txtGridSize').textContent = opt.label;
                 closeOptionModal();
                 startWithCountdown();
             };
@@ -1040,21 +1151,52 @@ function showHint() {
 }
 
 function showIdleHint() {
+    // 1. 이미 다 찾았으면 중단
     if (possibleWords.size === 0) {
-        // [수정] 다국어 변수 사용
         showToast(T.hintTitle, T.noWords);
         return;
     }
+
+    // 2. 스피드런 모드일 때만 페널티 적용
+    if (currentMode !== 'challenge') { 
+        // 시간 추가
+        const penalty = GAME_CONFIG.SPEED_RUN_HINT_PENALTY;
+        timeElapsed += penalty;
+        
+        // UI 효과 (빨간색 번쩍임)
+        if (timerElement) {
+            timerElement.textContent = formatTime(timeElapsed);
+            timerElement.classList.remove('text-flash-red');
+            void timerElement.offsetWidth; // 리플로우 강제
+            timerElement.classList.add('text-flash-red');
+        }
+        
+        // 토스트 메시지 (다국어 적용)
+        showToast(`+${penalty}s`, T.penaltyTitle);
+    }
+
+    // 3. 못 찾은 단어 중 하나 랜덤 선택
     const keys = Array.from(possibleWords.keys());
     const randomWord = keys[Math.floor(Math.random() * keys.length)];
-    const startIdx = possibleWords.get(randomWord);
-    const tile = document.querySelector(`.tile[data-index="${startIdx}"]`);
-    if (tile) {
-        tile.classList.remove('hint-highlight');
-        void tile.offsetWidth; 
-        tile.classList.add('hint-highlight');
-        setTimeout(() => { tile.classList.remove('hint-highlight'); }, 1500);
+    
+    // 4. 저장해둔 경로(Path) 가져오기
+    const path = possibleWords.get(randomWord);
+
+    // 5. 전체 타일 하이라이트 표시 (깜빡임)
+    if (Array.isArray(path)) {
+        path.forEach(idx => {
+            const tile = document.querySelector(`.tile[data-index="${idx}"]`);
+            if (tile) {
+                tile.classList.remove('hint-highlight');
+                void tile.offsetWidth; 
+                tile.classList.add('hint-highlight');
+                // 1.5초 동안 보여줍니다.
+                setTimeout(() => { tile.classList.remove('hint-highlight'); }, 1500);
+            }
+        });
     }
+
+    triggerHaptic('tap');
     lastActionTime = Date.now(); 
 }
 
@@ -1146,7 +1288,7 @@ function startTimer() {
             timerElement.textContent = formatTime(timeLeft);
             if (timeLeft <= 10) timerElement.style.color = "#ef4444";
             else timerElement.style.color = "white";
-            if (timeLeft <= 0) { stopTimer(); gameOver(false); }
+            if (timeLeft <= 0) { stopTimer(); gameOver(true); }
         } else {
             timeElapsed++;
             timerElement.textContent = formatTime(timeElapsed);
@@ -1161,16 +1303,101 @@ function stopTimer() {
 }
 
 function gameOver(isSuccess) {
-    // [수정] 다국어 변수 사용
-    if (isSuccess) {
-        const timeStr = formatTime(GAME_CONFIG.CHALLENGE_TIME - timeLeft);
-        SoundManager.playFanfare();
-        showResultModal("🎉", T.successTitle, `${timeStr} ${T.successDesc}`, true);
-    } else {
-        SoundManager.playFail();
-        showResultModal("⏰", T.failTitle, `${T.failDesc}${currentScore}`, false);
+    // 1. 강제 정지 로직
+    if (isDragging) {
+        isDragging = false;
+        document.removeEventListener('mousemove', moveDrag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', moveDrag);
+        document.removeEventListener('touchend', endDrag);
+        selectedIndices = [];
+        clearSelection();
+        const dragPath = document.getElementById('dragPath');
+        if (dragPath) dragPath.setAttribute('d', '');
     }
-    // [추가] 결과창이 떴을 때, 다음 게임을 미리 준비합니다.
+
+    // [데이터 저장 함수] 객체 형태로 상세 정보를 저장합니다.
+    const saveRecord = (key, newValue, mode) => {
+        // 기존 데이터 불러오기 (문자열일 수도, 객체일 수도 있음)
+        const raw = localStorage.getItem(key);
+        let oldVal = 0;
+        
+        try {
+            const parsed = JSON.parse(raw);
+            // 객체라면 value 속성을, 숫자라면 그대로 사용
+            oldVal = (parsed && typeof parsed === 'object') ? parsed.value : (parseInt(raw) || 0);
+        } catch(e) {
+            oldVal = parseInt(raw) || 0;
+        }
+
+        let isNew = false;
+        // 타임어택: 점수가 높으면 갱신
+        if (mode === 'score' && newValue > oldVal) isNew = true;
+        // 스피드런: 시간이 짧으면(0이 아니고) 갱신
+        else if (mode === 'time' && (oldVal === 0 || newValue < oldVal)) isNew = true;
+
+        if (isNew) {
+            // [중요] 상세 정보를 JSON으로 저장!
+            const dataObj = {
+                value: newValue,
+                found: foundWords.size,      // 찾은 단어 수
+                total: totalWordCount,       // 전체 단어 수
+                board: isHexMode ? 'hex' : currentGridSize, // 보드 타입
+                date: Date.now()
+            };
+            localStorage.setItem(key, JSON.stringify(dataObj));
+        }
+        return isNew;
+    };
+
+    // -----------------------------------------------------------
+    // [A] 타임어택 (점수 랭킹)
+    // -----------------------------------------------------------
+    if (currentMode === 'challenge') {
+        const key = `best_score_${currentGridSize}${isHexMode ? '_hex' : ''}`;
+        const isNewRecord = saveRecord(key, currentScore, 'score');
+
+        SoundManager.playFanfare();
+
+        let htmlContent = ``;
+        if (isNewRecord) htmlContent += `<div class="record-badge">${T.newRecord}</div>`;
+        htmlContent += `<div class="big-score">${currentScore}</div>`; 
+        
+        // 상세 정보 표시
+        htmlContent += `<div class="sub-score" style="margin-top:5px;">Found: ${foundWords.size} / ${totalWordCount}</div>`;
+
+        const icon = isNewRecord ? "🏆" : "⏰";
+        showResultModal(icon, T.timeOverTitle, htmlContent, true);
+
+        if (isNewRecord) setTimeout(triggerConfetti, 300);
+    } 
+    
+    // -----------------------------------------------------------
+    // [B] 스피드런 (시간 랭킹)
+    // -----------------------------------------------------------
+    else {
+        if (isSuccess) {
+            const key = `best_time_${currentGridSize}${isHexMode ? '_hex' : ''}`;
+            const isNewRecord = saveRecord(key, timeElapsed, 'time');
+
+            SoundManager.playFanfare();
+
+            let htmlContent = ``;
+            if (isNewRecord) htmlContent += `<div class="record-badge">${T.newRecord}</div>`;
+            htmlContent += `<div class="big-score">${formatTime(timeElapsed)}</div>`; 
+            htmlContent += `<div class="sub-score" style="margin-top:5px;">Total Words: ${totalWordCount}</div>`;
+
+            const icon = isNewRecord ? "🏆" : "🎉";
+            const title = possibleWords.size === 0 ? T.perfectTitle : T.successTitle;
+            showResultModal(icon, title, htmlContent, true);
+
+            if (isNewRecord) setTimeout(triggerConfetti, 300);
+        } else {
+            SoundManager.playFail();
+            showResultModal("😭", T.failTitle, `${T.failDesc}${currentScore}`, false);
+        }
+    }
+
     setTimeout(() => {
         prepareGameInBackground();
     }, 500);
@@ -1184,7 +1411,7 @@ function showResultModal(iconText, titleText, descText, isSuccess) {
 
     icon.textContent = iconText; 
     title.textContent = titleText;
-    desc.textContent = descText;
+    desc.innerHTML = descText;
 
     if (isSuccess) {
         triggerConfetti();
@@ -1218,7 +1445,7 @@ function solveBoard(grid, size) {
         if (path.length >= 3) {
             const word = assembleHangul(path.map(p => grid[p]), COMBINED_DICTIONARY);
             if (COMBINED_DICTIONARY.has(word) && !found.has(word)) {
-                found.set(word, path[0]); // 시작 인덱스 저장
+                found.set(word, [...path]);
             }
         }
         if (path.length >= 7) return;
@@ -1306,4 +1533,30 @@ function getCenter(index) {
         x: rect.left + rect.width / 2 - gridRect.left,
         y: rect.top + rect.height / 2 - gridRect.top
     };
+}
+
+/* --- 랭킹 시스템 연결 --- */
+
+// 1. 랭킹 매니저에게 진동 기능을 빌려줍니다.
+RankManager.onHaptic = () => triggerHaptic('tap');
+
+// 2. HTML 버튼들이 호출할 수 있도록 window 객체에 연결
+window.openRankingModal = function() {
+    // 현재 게임 상태(크기, 모드)를 전달하며 엽니다.
+    RankManager.openModal(currentGridSize, isHexMode, currentMode);
+}
+
+window.closeRankingModal = function() {
+    RankManager.closeModal();
+}
+
+window.switchRankTab = function(type) {
+    triggerHaptic('tap'); // 탭 직접 클릭 시 진동
+    RankManager.switchTab(type);
+}
+
+// [추가] 랭킹 모드(점수/시간) 변경 함수 연결
+window.switchRankMode = function(mode) {
+    triggerHaptic('tap');
+    RankManager.switchMode(mode);
 }

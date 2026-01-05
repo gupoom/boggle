@@ -929,3 +929,356 @@ canvas {
 .option-btn.option-hex.selected::before {
     display: none; /* 선택 시 안쪽 파내기 효과 제거 */
 }
+
+/* --- 결과창 점수 디자인 --- */
+
+/* 현재 점수: 아주 크고 굵게 */
+.big-score {
+    font-size: 60px;
+    font-weight: 800;
+    color: #4ade80; /* 밝은 녹색 */
+    margin: 10px 0;
+    text-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+    line-height: 1;
+}
+
+/* 신기록 배지: 반짝이는 효과 */
+.record-badge {
+    font-size: 18px;
+    font-weight: bold;
+    color: #f59e0b; /* 황금색 */
+    background: rgba(245, 158, 11, 0.1);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 5px;
+    animation: pulse 1.5s infinite;
+}
+
+/* 기존 최고 기록: 회색으로 차분하게 */
+.sub-score {
+    font-size: 16px;
+    color: #94a3b8;
+    font-weight: normal;
+}
+
+/* 깜빡이는 애니메이션 */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* --- [통합] 랭킹 모달 & 스피드런 스타일 --- */
+
+/* 1. 풀 스크린 랭킹 모달 */
+.ranking-modal-content {
+    /* 화면 꽉 채우기 */
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    padding: 20px;
+    background: #1e293b !important; /* 배경색 */
+    display: flex;
+    flex-direction: column;
+}
+
+/* 2. 상단 닫기(X) 버튼 */
+.btn-close-ranking {
+    position: absolute;
+    top: 15px; right: 15px;
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 10px;
+    z-index: 10;
+    transition: color 0.2s;
+}
+.btn-close-ranking:active { color: white; }
+
+/* 3. 랭킹 종류 선택 스위치 (점수 vs 시간) */
+.rank-type-switch {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: rgba(255,255,255,0.05);
+    padding: 4px;
+    border-radius: 12px;
+    margin-top: 40px; /* 상단 X 버튼과 겹치지 않게 여백 추가 */
+}
+
+.rank-type-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rank-type-btn.active {
+    background: #475569;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* 4. 랭킹 리스트 영역 */
+.ranking-list {
+    flex: 1;
+    overflow-y: auto;
+    background: #0f172a;
+    border-radius: 16px;
+    padding: 10px;
+    margin-bottom: 10px;
+    min-height: 200px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* --- [NEW] 리더보드 3단 레이아웃 --- */
+
+.rank-item {
+    display: grid;
+    /* 좌측(순위) | 중앙(프로필) | 우측(점수) */
+    grid-template-columns: 45px 1fr auto; 
+    align-items: center;
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: white;
+    gap: 10px;
+}
+.rank-item:last-child { border-bottom: none; }
+
+/* 1. 좌측: 순위 영역 */
+.rank-col-left {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.rank-num {
+    font-size: 18px;
+    font-weight: 800;
+    color: #64748b;
+    width: 30px;
+    text-align: center;
+}
+
+/* 2. 중앙: 프로필 영역 (이름 + 뱃지) */
+.rank-col-center {
+    display: flex;
+    flex-direction: column; /* 위아래 배치 */
+    justify-content: center;
+    align-items: flex-start;
+    gap: 4px; /* 이름과 뱃지 사이 간격 */
+    overflow: hidden; /* 이름 길어지면 자르기 위해 */
+}
+
+.rank-user-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.rank-flag {
+    font-size: 16px; /* 국기 크기 */
+    line-height: 1;
+}
+
+.rank-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 긴 이름은 ... 처리 */
+}
+
+/* 보드 뱃지 (사이즈 조정) */
+.board-badge {
+    font-size: 10px;      /* 조금 작게 */
+    font-weight: 800;
+    padding: 2px 8px;     /* 패딩 조정 */
+    border-radius: 4px;
+    color: white;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    display: inline-block; /* 너비 자동 조절 */
+    
+    /* 기존 뱃지 스타일 유지 (그라데이션 등) */
+    width: auto;          /* 고정 너비 해제 */
+    height: auto;
+}
+
+/* 3. 우측: 스탯 영역 (점수 + 상세정보) */
+.rank-col-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* 오른쪽 정렬 */
+    justify-content: center;
+}
+
+.rank-main-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #4ade80; /* 점수 강조색 */
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.rank-sub-info {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+/* 1, 2, 3등 강조 효과 (배경색 및 순위 색상) */
+.rank-item.top-1 { background: rgba(251, 191, 36, 0.08); }
+.rank-item.top-1 .rank-num { color: #fbbf24; font-size: 24px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.4); }
+
+.rank-item.top-2 { background: rgba(203, 213, 225, 0.05); }
+.rank-item.top-2 .rank-num { color: #e2e8f0; font-size: 22px; }
+
+.rank-item.top-3 { background: rgba(180, 83, 9, 0.05); }
+.rank-item.top-3 .rank-num { color: #d97706; font-size: 20px; }
+
+/* 로딩 및 기록 없음 메시지 */
+.rank-loading {
+    text-align: center;
+    color: #64748b;
+    margin-top: 80px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* 6. 타이머 페널티 효과 (스피드런 모드용) */
+.text-flash-red {
+    animation: flashRed 0.5s ease-out;
+    color: #ef4444 !important;
+}
+@keyframes flashRed {
+    0% { transform: scale(1.5); color: #ef4444; }
+    100% { transform: scale(1); }
+}
+
+/* --- [NEW] 랭킹 리스트 4단 레이아웃 (최종 수정) --- */
+
+.rank-item {
+    display: grid;
+    /* [순위] [뱃지] [프로필(가변)] [점수] */
+    grid-template-columns: 35px 55px 1fr auto; 
+    align-items: center;
+    padding: 10px 8px; /* 패딩을 살짝 줄여 공간 확보 */
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: white;
+    gap: 8px; /* 간격 조정 */
+}
+.rank-item:last-child { border-bottom: none; }
+
+/* 1. 순위 영역 */
+.rank-col-rank {
+    display: flex; justify-content: center;
+}
+.rank-num {
+    font-size: 18px; font-weight: 800; color: #64748b;
+}
+
+/* 2. 보드 뱃지 영역 */
+.rank-col-badge {
+    display: flex; justify-content: center; align-items: center;
+}
+
+/* 보드 뱃지 디자인 (타일 형태 유지) */
+.board-badge {
+    font-size: 12px; font-weight: 800;
+    display: flex; justify-content: center; align-items: center;
+    
+    /* 정사각형 타일 크기 */
+    width: 36px; height: 36px;
+    
+    color: white;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.2); /* 그림자 */
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+/* 뱃지 색상 및 모양 */
+.badge-4, .badge-5 { border-radius: 10px; }
+.badge-4 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.badge-5 { background: linear-gradient(135deg, #10b981, #059669); }
+.badge-hex { 
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border-radius: 0;
+    clip-path: polygon(50% 0%, 100% 20%, 100% 80%, 50% 100%, 0% 80%, 0% 20%);
+    padding-top: 2px;
+}
+
+/* 3. 프로필 영역 (국가 + 이름) */
+.rank-col-profile {
+    display: flex;
+    flex-direction: column; /* 위아래 배치 */
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0; /* Flex 자식의 말줄임표(...) 처리를 위해 필수 */
+}
+
+.rank-flag {
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.rank-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+    line-height: 1.2;
+    
+    /* [핵심] 긴 이름 2줄 처리 */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* 최대 2줄 */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-all; /* 단어 중간에도 줄바꿈 허용 */
+}
+
+/* 4. 스탯 영역 (점수 + 난이도) */
+.rank-col-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* 오른쪽 정렬 */
+    justify-content: center;
+}
+
+.rank-main-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #4ade80;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.rank-sub-info {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 2px;
+    font-weight: 500;
+    text-align: right;
+}
+
+/* 1, 2, 3등 강조 효과 */
+.rank-item.top-1 { background: rgba(251, 191, 36, 0.08); }
+.rank-item.top-1 .rank-num { color: #fbbf24; font-size: 22px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.4); }
+.rank-item.top-2 { background: rgba(203, 213, 225, 0.05); }
+.rank-item.top-2 .rank-num { color: #e2e8f0; font-size: 20px; }
+.rank-item.top-3 { background: rgba(180, 83, 9, 0.05); }
+.rank-item.top-3 .rank-num { color: #d97706; font-size: 20px; }

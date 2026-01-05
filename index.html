@@ -52,15 +52,16 @@
         <img src="images/logo_game.png" alt="MOA" class="header-logo">
         
         <div class="header-controls">
+            <button id="btnRanking" class="btn-icon-setting" onclick="openRankingModal()">
+                <span style="font-size:22px;">🏆</span>
+            </button>
+
             <button class="btn-new-game" onclick="startWithCountdown()">
                 <span id="uiNewGame">↻ 새 게임</span>
             </button>
             
             <button id="btnSettings" class="btn-icon-setting" onclick="openSettingsModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 5 4.6a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
+                <span style="font-size:22px;">⚙️</span>
             </button>
         </div>
     </div>
@@ -199,7 +200,29 @@
             <button class="btn-full btn-gray" id="uiCloseSheet" onclick="closeSheet()">닫기</button>
         </div>
     </div>
-    
+
+    <div class="overlay" id="rankingModal">
+        <div class="modal ranking-modal-content">
+            <button class="btn-close-ranking" onclick="closeRankingModal()">✕</button>
+
+            <div class="modal-title" id="uiRankingTitle" style="margin-top:20px;">🏆 HALL OF FAME</div>
+
+            <div class="rank-type-switch">
+                <button class="rank-type-btn" id="btnRankTime" onclick="switchRankMode('time')">
+                    ⏱️ <span id="uiRankTime">스피드런</span>
+                </button>
+                
+                <button class="rank-type-btn active" id="btnRankScore" onclick="switchRankMode('score')">
+                    🏆 <span id="uiRankScore">타임어택</span>
+                </button>
+            </div>
+            
+            <div class="ranking-list" id="rankingList">
+                <div class="rank-loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
     <canvas id="confetti-canvas"></canvas>
 
     <script type="module" src="js/game.js"></script>

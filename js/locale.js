@@ -8,8 +8,8 @@ const MESSAGES = {
     ko: {
         ui: {
             newGame: "↻ 새 게임",
-            practice: "연습",
-            challenge: "챌린지",
+            practice: "스피드런",
+            challenge: "타임어택", 
             hintBtn: "💡 힌트 보기",
             hintTooltip: "눌러서 힌트 보기!",
             hintTitle: "힌트",
@@ -20,26 +20,48 @@ const MESSAGES = {
             close: "닫기",
             levelLabel: "랜덤",
             gridLabel: "4x4",
-            wordStats: "단어 (찾은것/전체)",
-            // [수정] 여기에 콤마(,)를 추가했습니다.
+            wordStats: "찾은 단어",
             naverSearch: "📖 네이버 사전 검색", 
             sourceTitle: "자료 출처",
             sourceDesc: "단어 사전은 국립국어원의 [우리말샘] 사전을 기초로 하였고, 단어의 영문 번역은 [한국어기초사전]의 영어 번역어를 기초로 제작하였습니다.",
             linkUrimalsaem: "우리말샘",
             linkBasicDict: "한국어기초사전",
-            exitConfirm: "게임을 종료하시겠습니까?"
+            exitConfirm: "게임을 종료하시겠습니까?",
+            // 랭킹 모달 관련 텍스트
+            rankingTitle: "🏆 명예의 전당",
+            rankScore: "타임어택",
+            rankTime: "스피드런",
+            rankNoRecord: "아직 기록이 없어요.\n지금 바로 도전해보세요!",
+            myRecord: "나 (내 기기 기록)",
+            localRecordMsg: "※ 내 기기에 저장된 최고 기록입니다.",
+            grid4: "4x4",
+            grid5: "5x5",
+            gridHex: "HEX",
+            closeRanking: "닫기"
         },
         game: {
             start: "시작",
             hintHidden: "찾아라! ",
-            hintFound: "히든 단어 발견!",
+            hintFound: "숨은 단어 발견!",
             alreadyFound: "이미 찾음!",
             tooShort: "3칸 이상이어야 해요",
             noWords: "더 이상 찾을 단어가 없어요!",
+
+            // [추가] 힌트 페널티 문구
+            penaltyTitle: "시간 페널티!",
+            penaltyDesc: "초 추가됨",
+            
+            // [기존 성공/실패 문구 - 연습모드용으로 유지]
             successTitle: "성공!",
-            successDesc: "만에 100점 달성!",
-            failTitle: "시간 초과!",
-            failDesc: "아쉽네요. 점수는: ",
+            successDesc: "만에 클리어!", // 연습모드 클리어 시
+            failTitle: "실패!",
+            failDesc: "점수는: ",
+
+            // [추가] 랭킹전(챌린지) 전용 문구
+            timeOverTitle: "시간 종료!",
+            finalScoreDesc: "최종 점수: ",
+            newRecord: "🏆 신기록 달성! 🏆",
+            bestScore: "최고 기록: ",
             perfectTitle: "PERFECT!",
             perfectDesc: "와우! 모든 단어를 찾았습니다!",
             retry: "다시 도전",
@@ -66,8 +88,8 @@ const MESSAGES = {
     en: {
         ui: {
             newGame: "↻ New Game",
-            practice: "Practice",
-            challenge: "Challenge",
+            practice: "Speed Run",
+            challenge: "Time Attack",
             hintBtn: "💡 Hint",
             hintTooltip: "Tap for Hint!",
             hintTitle: "Hint",
@@ -79,13 +101,23 @@ const MESSAGES = {
             levelLabel: "Random",
             gridLabel: "4x4",
             wordStats: "Found",
-            // [수정] 여기에 콤마(,)를 추가했습니다.
             naverSearch: "📖 Open Dictionary",
             sourceTitle: "Data Sources",
             sourceDesc: "The dictionary is based on 'Urimalsaem' (NIKL), and English translations are derived from the 'Korean Basic Dictionary'.",
             linkUrimalsaem: "Urimalsaem",
             linkBasicDict: "Korean Basic Dictionary",
-            exitConfirm: "Do you want to exit the game?"
+            exitConfirm: "Do you want to exit the game?",
+            // Ranking modal texts
+            rankingTitle: "🏆 HALL OF FAME",
+            rankScore: "Time Attack",
+            rankTime: "Speed Run",
+            rankNoRecord: "No records yet.\nChallenge now!",
+            myRecord: "Me (Local Best)",
+            localRecordMsg: "※ This is the best record saved on this device.",
+            grid4: "4x4",
+            grid5: "5x5",
+            gridHex: "HEX",
+            closeRanking: "Close"
         },
         game: {
             start: "START",
@@ -94,10 +126,22 @@ const MESSAGES = {
             alreadyFound: "Used!",
             tooShort: "3+ letters required",
             noWords: "No more words to find!",
+
+            // [New] Penalty Text
+            penaltyTitle: "Time Penalty!",
+            penaltyDesc: "sec added",
+
+            // [Existing Text]
             successTitle: "Success!",
-            successDesc: "to reach 100 points!",
-            failTitle: "Time's Up!",
-            failDesc: "Nice try. Your score: ",
+            successDesc: "Clear!",
+            failTitle: "Failed!",
+            failDesc: "Your score: ",
+
+            // [New] Ranking Mode Text
+            timeOverTitle: "TIME OVER!",
+            finalScoreDesc: "Final Score: ",
+            newRecord: "🏆 NEW RECORD! 🏆",
+            bestScore: "Personal Best: ",
             perfectTitle: "PERFECT!",
             perfectDesc: "Wow! You found all words!",
             retry: "Try Again",
@@ -151,17 +195,25 @@ export function initLocaleUI() {
     set('btnRemoveAdsInSetting', UI_TEXTS.removeAds);
     set('uiCloseSettings', UI_TEXTS.close);
     
-    // [추가] 옵션 모달 닫기 버튼
+    // 옵션 모달
     set('uiCloseOption', UI_TEXTS.close);
 
-    // [추가] 단어 뜻 시트 (네이버 버튼, 닫기 버튼)
+    // 단어 뜻 시트
     set('btnNaver', UI_TEXTS.naverSearch);
     set('uiCloseSheet', UI_TEXTS.close);
 
-    // [추가] 출처 텍스트 적용
+    // 출처 텍스트
     set('uiSourceTitle', UI_TEXTS.sourceTitle);
     set('uiSourceDesc', UI_TEXTS.sourceDesc);
     set('uiLinkUrimalsaem', UI_TEXTS.linkUrimalsaem);
     set('uiLinkBasicDict', UI_TEXTS.linkBasicDict);
+
+    // 랭킹 모달
+    set('uiRankingTitle', UI_TEXTS.rankingTitle); 
+    set('uiRankScore', UI_TEXTS.rankScore);
+    set('uiRankTime', UI_TEXTS.rankTime);
+    set('uiGrid4', UI_TEXTS.grid4);
+    set('uiGrid5', UI_TEXTS.grid5);
+    set('uiGridHex', UI_TEXTS.gridHex);
+    set('uiCloseRanking', UI_TEXTS.closeRanking);
 }
-// [수정] 맨 마지막에 있던 불필요한 '}'를 제거했습니다.
